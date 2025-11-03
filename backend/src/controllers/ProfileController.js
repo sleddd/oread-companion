@@ -110,6 +110,7 @@ export class ProfileController {
             userSpecies: data.user?.species || 'human',
             timezone: data.user?.timezone || 'UTC',
             userBackstory: data.user?.backstory || '',
+            communicationBoundaries: data.user?.communicationBoundaries || '',
             userPreferences: data.user?.preferences || { music: [], books: [], movies: [], hobbies: [], other: '' },
             majorLifeEvents: data.user?.majorLifeEvents || [],
             sharedRoleplayEvents: data.sharedMemory?.roleplayEvents || [],

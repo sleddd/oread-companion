@@ -58,7 +58,7 @@ Build your own AI companion using local language models. Chat, roleplay, brainst
 
 ### Settings & Profiles
 
-*Full control over your experience - web search, memory, timezone, define your user profile like you would a character for more better roleplay*
+*Full control over your experience - web search, memory, timezone, define your user profile like you would a character for better roleplay*
 
 <img width="1142" height="737" alt="Screenshot 2025-11-02 at 6 42 08 PM" src="https://github.com/user-attachments/assets/95d4f6d7-3fff-442f-a683-01136c07c2ac" />
 

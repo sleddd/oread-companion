@@ -281,6 +281,7 @@ router.get('/chat/starter', async (req, res) => {
         // Get session ID and character name from query params
         const sessionId = req.query.sessionId || crypto.randomUUID();
         const characterName = req.query.characterName || null;
+        const forceRegenerate = req.query.force === 'true';  // Allow forced regeneration
 
         // Get encryption key from session
         const encryptionKey = req.session?.encryptionKey || null;
@@ -289,9 +290,9 @@ router.get('/chat/starter', async (req, res) => {
         const sessionManager = getSessionManager();
         const chatbot = await sessionManager.getChatbot(sessionId, characterName, encryptionKey);
 
-        // Check if this character needs a starter
+        // Check if this character needs a starter (skip check if forced regeneration)
         const activeCharacterName = chatbot.getActiveCharacterName();
-        if (!sessionManager.needsStarter(activeCharacterName)) {
+        if (!forceRegenerate && !sessionManager.needsStarter(activeCharacterName)) {
             // Character already has a starter in another tab - skip it
             return res.json({
                 sessionId: sessionId,

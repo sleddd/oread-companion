@@ -639,9 +639,8 @@ class EmotionChatbot {
                 // }
                 await this.loadProfileAvatar(characterToLoad);
 
-                // Load conversation starter only for Kairos (wellness character)
-                // Other characters: user can start the conversation themselves
-                if (characterToLoad && characterToLoad.toLowerCase() === 'kairos') {
+                // Load conversation starter for all characters
+                if (characterToLoad) {
                     await this.loadConversationStarter(characterToLoad);
                 }
 
@@ -783,8 +782,8 @@ class EmotionChatbot {
             const messages = this.chatMessages.querySelectorAll('.message, .error-message');
             messages.forEach(msg => msg.remove());
 
-            // Don't load conversation starter on character switch
-            // User can start the conversation themselves
+            // Load conversation starter for the new character
+            await this.loadConversationStarter(selectedCharacter);
 
             this.chatMessages.appendChild(systemMsg);
             this.scrollToBottom();
@@ -990,9 +989,9 @@ class EmotionChatbot {
         this.showTypingIndicator();
 
         try {
-            // Request a new conversation starter
+            // Request a new conversation starter with force=true to bypass the "already shown" check
             const response = await CONFIG.fetch(
-                `/api/chat/starter?sessionId=${this.sessionId}&characterName=${encodeURIComponent(this.selectedCharacter)}`
+                `/api/chat/starter?sessionId=${this.sessionId}&characterName=${encodeURIComponent(this.selectedCharacter)}&force=true`
             );
 
             this.hideTypingIndicator();
@@ -1005,6 +1004,18 @@ class EmotionChatbot {
                     const bubbleDiv = botMessageDiv.querySelector('.message-bubble');
                     bubbleDiv.innerHTML = ''; // Clear existing content
                     this.renderTextWithEmotes(bubbleDiv, data.starter);
+
+                    // Re-add the favorite button (it was cleared with innerHTML)
+                    const favoriteBtn = document.createElement('button');
+                    favoriteBtn.className = 'favorite-btn';
+                    favoriteBtn.innerHTML = `
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                        </svg>
+                    `;
+                    favoriteBtn.title = 'Add to favorites';
+                    favoriteBtn.onclick = () => this.toggleFavorite(botMessageDiv, favoriteBtn);
+                    bubbleDiv.appendChild(favoriteBtn);
                 } else {
                     throw new Error('No starter returned');
                 }

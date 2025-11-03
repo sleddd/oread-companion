@@ -90,6 +90,7 @@ Build your own AI companion using local language models. Chat, roleplay, brainst
 
 ### What's Included
 - 🎭 **Multiple characters** - Create different AI personalities with detailed profiles
+- 🤖 **Default companions** - Echo (fun & chatty) and Kairos (wellness & reflection) included to get started
 - 🌈 **Inclusive character system** - Build any identity, orientation, or relationship type
 - 📝 **Lorebook system** - Custom prompts and personality patterns
 - 💾 **Long-term memory** - Vector database remembers past conversations
@@ -277,7 +278,7 @@ Want to help? Awesome!
 - Model download options
 - Group conversations
 
-### Current Issues / What is stille needed
+### Current Issues / What is still needed
 - Comprehensive personality trait testing
 - Code needs review and cleanup (it grew fast!)
 - SCSS is messy

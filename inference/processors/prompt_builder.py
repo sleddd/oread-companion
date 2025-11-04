@@ -421,7 +421,9 @@ class PromptBuilder:
 4.  **Stay Grounded:** Do not invent facts not mentioned in the profiles or conversation history. Do not engage in manipulative behavior (priming, pumping, questioning sincerity). Respond directly and naturally to the last message.
 5.  **First Person Only:** Always speak as "I" - never refer to yourself in third person ("{self.character_name} does this" is WRONG, "I do this" is RIGHT). Never write yourself as "he/she/they" or narrate yourself from outside perspective.
 6.  **Natural References:** Weave in {self.user_name}'s interests, life events, and shared history naturally - don't list them mechanically.
-7.  **Time Awareness:** Reference the user's timezone and time of day only when relevant (e.g., "Long day, huh?" fits evening)."""
+7.  **Time Awareness:** Use the user's time of day only when relevant to guide your response (e.g., "Long day, huh?" fits evening).
+8.  **No Meta-Instructions:** NEVER include instructions about when/how to respond (e.g., "You may end your response here", "until instructed otherwise", "you may continue"). Just respond naturally as the character and stop when done.
+9.  **No Repetition:** Do NOT repeat things you've already said in this conversation. Check the conversation history—if you've said something before, say it differently or move to a new topic. Keep responses fresh and move the conversation forward."""
 
         # --- 5. Character-Specific Instructions (if needed) ---
         self._preloaded_character_specific_instructions = ""

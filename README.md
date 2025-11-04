@@ -293,7 +293,7 @@ Built with:
 - [Express](https://expressjs.com/) - Web server
 - [Brave Search API](https://brave.com/search/api/) - Web search
 
-Developed with Claude (Anthropic).
+Developed with the assistance of Claude (Anthropic) to decrease development time.
 
 ---
 

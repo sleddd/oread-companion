@@ -50,7 +50,7 @@ class ContextManager:
             relevant_memories = self.memory_service.semantic_search(
                 query=query,
                 character=character,
-                n_results=3
+                n_results=5
             )
 
             if relevant_memories:
@@ -70,8 +70,8 @@ class ContextManager:
 
                     seen_messages.add(msg)
 
-                    # Only include very high-similarity memories (stricter for speed)
-                    if similarity > 0.92:
+                    # Only include high-similarity memories (80% match threshold)
+                    if similarity > 0.80:
                         if speaker == user_name:
                             memory_lines.append(f"Previously, {user_name} mentioned: \"{msg}\"")
                         else:

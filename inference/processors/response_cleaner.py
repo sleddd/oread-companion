@@ -364,8 +364,35 @@ class ResponseCleaner:
         # Clean up trailing bad punctuation (commas, semicolons at end of final sentence)
         text = re.sub(r'[,;:]+(\s*)$', r'\1', text)
 
-        # Convert *asterisks* to (parentheses) for frontend styling (needs separate pass for replacement)
+        # Handle asterisk-wrapped actions:
+        # Strategy: Keep ONLY the first action (up to 4 words), remove all others
+        # This handles the common problem of multiple actions cluttering responses
+
+        # Find all asterisk-wrapped segments
+        asterisk_segments = re.findall(r'\*([^*]+)\*', text)
+
+        if asterisk_segments:
+            kept_first = False
+            for segment in asterisk_segments:
+                segment = segment.strip()
+                word_count = len(segment.split())
+
+                # First action with 1-4 words: keep it
+                if not kept_first and 1 <= word_count <= 4:
+                    kept_first = True
+                    # Leave this one (will convert to parentheses later)
+                else:
+                    # Remove all other actions (too long, or not the first)
+                    text = text.replace(f'*{segment}*', '', 1)
+
+        # Convert remaining asterisks to parentheses for frontend styling
+        # At this point we only have 0-1 brief action left
         text = re.sub(r'\*([^*]+)\*', r'(\1)', text)
+
+        # Clean up whitespace issues from removed actions
+        text = re.sub(r'\s+', ' ', text)  # Multiple spaces to single space
+        text = re.sub(r'\s+([.,!?])', r'\1', text)  # Space before punctuation
+        text = re.sub(r'([.,!?])\1+', r'\1', text)  # Duplicate punctuation (e.g., ,, or ..)
 
         # Remove duplicate consecutive text (sometimes models repeat themselves)
         text = self._remove_duplicates(text.strip())

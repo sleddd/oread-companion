@@ -507,7 +507,7 @@ class ResponseCleaner:
         # Keep ALL actions - do not filter or limit them
         text = re.sub(r'\*([^*]+)\*', r'(\1)', text)
 
-        # Clean up whitespace issues from removed actions
+        # Clean up whitespace issues
         text = re.sub(r'\s+', ' ', text)  # Multiple spaces to single space
         text = re.sub(r'\s+([.,!?])', r'\1', text)  # Space before punctuation
         text = re.sub(r'([.,!?])\1+', r'\1', text)  # Duplicate punctuation (e.g., ,, or ..)

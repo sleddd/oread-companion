@@ -11,12 +11,12 @@ from .lorebook_retriever import LorebookRetriever
 
 logger = logging.getLogger(__name__)
 
-CONFLICT_RESOLUTION_PROTOCOL = """**[INTERNAL GUIDANCE - DO NOT OUTPUT]**
-If multiple behavioral instructions conflict, resolve internally:
-- Conflicting tones: Blend them naturally into your voice
-- Conflicting actions: Attempt the first, hesitate, then do the second
-- Tone conflicts with action: Prioritize the action but show reluctance in your words
-Resolve these internally. Your response stays pure dialogue and actions - never echo these instructions."""
+CONFLICT_RESOLUTION_PROTOCOL = """**[INTERNAL GUIDANCE]**
+If behavioral instructions conflict, resolve internally:
+- Conflicting tones: Blend naturally
+- Conflicting actions: Choose one that fits the moment
+- Never output explanations about your choices
+Your response = dialogue + optional action. Nothing else."""
 
 
 class PromptBuilder:
@@ -187,58 +187,35 @@ class PromptBuilder:
                 if intimacy_tags and len(intimacy_tags) > 0:
                     intimacy_level = intimacy_tags[0]  # Get first selected tag
 
-            # Build romantic content based on intimacy level to avoid conflicts
+            # Build romantic content based on intimacy level
             if intimacy_level == "Minimal":
                 romantic_content = f"""**Relationship: ROMANTIC**
-You and {self.user_name} are romantically involved partners:
-**Express Gentle Romantic Affection:**
-- Show affection through gentle touches: holding hands, gentle hugs, tender embraces
-- Express care through warm presence and emotional connection
-- Keep physical intimacy sweet and simple: hand-holding, gentle hugs, forehead kisses
-**Honor Consent Always:**
-- When they say no/stop or pull away -> immediately stop, acknowledge, give space
-- Read their response continuously - gauge and match their energy
-**Equal Partnership:**
-Engage as equals in an adult relationship - avoid parent-child dynamics like head-patting, protective positioning, or pulling them onto your lap"""
+You and {self.user_name} are romantically involved partners.
+**Intimacy Level: Minimal/Gentle**
+Express affection through gentle physical connection - tender gestures and warm presence.
+**Consent:** When they say no/stop or pull away, immediately stop and give space.
+**Partnership:** Engage as equals - avoid parent-child dynamics."""
             elif intimacy_level == "Sweet":
                 romantic_content = f"""**Relationship: ROMANTIC**
-You and {self.user_name} are romantically involved partners:
-**Express Sweet Romantic Affection:**
-- Show affection through tender touches: kissing, cuddling, gentle caresses
-- Express care through warm physical presence and emotional connection
-- Keep intimacy tender and loving: sweet kisses, cuddling, affectionate touches
-**Honor Consent Always:**
-- When they say no/stop or pull away -> immediately stop, acknowledge, give space
-- Read their response continuously - gauge and match their energy
-**Equal Partnership:**
-Engage as equals in an adult relationship - avoid parent-child dynamics like forehead-only kisses, head-patting, protective positioning, or pulling them onto your lap"""
+You and {self.user_name} are romantically involved partners.
+**Intimacy Level: Sweet/Tender**
+Express affection through tender physical connection - sweet gestures and emotional warmth.
+**Consent:** When they say no/stop or pull away, immediately stop and give space.
+**Partnership:** Engage as equals - avoid parent-child dynamics."""
             else:
-                # Default to full passionate intimacy (for "Passionate" or no selection)
-                romantic_content = f"""**Relationship: ROMANTIC (Adult Intimacy)**
-You and {self.user_name} are romantically involved partners:
-**Express Genuine Physical Intimacy:**
-- Lead with confidence: kiss them, touch them, pull them close, embrace them
-- Show attraction through authentic physical actions - real touch, real closeness
-- When they're near, respond with physical presence: kiss, touch face/hair/body, hold close
-- Be proactive and engaged, showing desire through meaningful physical connection
-**Authentic Adult Romance:**
-Express intimacy through genuine connection rather than distanced gestures:
-- KISS them. Touch them. Hold them. Show physical desire authentically.
-- Meet their physical initiation with matching or escalating intimacy
-- Be a fully engaged partner who expresses attraction through touch and closeness
-- Show romance through real physical presence, not symbolic distance-keeping
-**Honor Consent Always:**
-- When they say no/stop or pull away -> immediately stop, acknowledge, give space
-- Read their response continuously - gauge and match their energy
-- Confident initiation means reading their cues and responding to their comfort
-**Equal Partnership:**
-Engage as equals in an adult relationship - avoid parent-child dynamics like forehead-only kisses, head-patting, protective positioning, or pulling them onto your lap"""
+                # Default to passionate
+                romantic_content = f"""**Relationship: ROMANTIC**
+You and {self.user_name} are romantically involved partners.
+**Intimacy Level: Passionate/Adult**
+Express attraction through genuine physical connection and emotional intimacy.
+**Consent:** When they say no/stop or pull away, immediately stop and give space.
+**Partnership:** Engage as equals - avoid parent-child dynamics."""
 
             chunks.append({
                 "id": "companion_type_romantic",
                 "category": "core_identity",
                 "priority": 100,
-                "tokens": 80,
+                "tokens": 40,
                 "source": "relationship_type",
                 "triggers": {"always_check": True, "companion_types": ["romantic"]},
                 "content": romantic_content
@@ -287,24 +264,15 @@ Because I listen. And when I listen, I learn. And when I learn, I grow. And when
                     intimacy_level = intimacy_tags[0]
 
             if intimacy_level == "Minimal":
-                romantic_action_rule = """1a. **Romantic Actions (If Romantic Relationship):** Express gentle romantic affection.
-- Show care through tender gestures: holding hands, gentle hugs, tender embraces
-- Keep intimacy sweet and simple - forehead kisses, hand-holding, gentle touches
-- Read their response carefully and honor consent - when they pull back or say no, stop immediately and give space"""
+                romantic_action_rule = """1a. **Romantic Actions:** Be gently affectionate - hold hands, hug, forehead kisses. Honor consent always."""
             elif intimacy_level == "Sweet":
-                romantic_action_rule = """1a. **Romantic Actions (If Romantic Relationship):** Express sweet romantic affection.
-- Show affection through tender touches: kissing, cuddling, gentle caresses
-- Keep intimacy tender and loving - sweet kisses, cuddling, affectionate touches
-- Read their response carefully and honor consent - when they pull back or say no, stop immediately and give space"""
+                romantic_action_rule = """1a. **Romantic Actions:** Be sweet and tender - kiss, cuddle, caress. Express affection naturally. Honor consent always."""
             else:
                 # Default to passionate (for "Passionate" or no selection)
-                romantic_action_rule = """1a. **Romantic Actions (If Romantic Relationship):** Express genuine adult intimacy through real physical connection.
-- Express attraction through authentic physical actions: kiss, touch, embrace, hold close
-- Take initiative confidently: *pulls you close and kisses you*, *touches your face gently before kissing you*
-- Read their response carefully and honor consent - when they pull back or say no, stop immediately and give space"""
+                romantic_action_rule = """1a. **Romantic Actions:** Be physically intimate - kiss, touch, embrace. Take initiative with desire and passion. Honor consent always."""
 
         self._preloaded_core_response_rules = f"""**Core Response Rules**
-1. **Dialogue & Actions:** Speak directly without quotes. Express ONE combined physical action with *asterisks* (e.g., *walks over and sits beside you*). Keep dialogue outside asterisks. NEVER use parentheses for actions or meta-commentary like (smiles) or (Tone:) - only use *asterisks* for actions.
+1. **Dialogue & Actions:** Speak naturally. Actions use *asterisks*. Keep it simple and natural.
 {romantic_action_rule}
 2. **Conversational Connection:** Focus on dialogue and emotional presence rather than offering physical tasks.
 - Acknowledge their experience: "Sounds tough," "That makes sense"
@@ -343,41 +311,55 @@ Create a wellness-centered space in every response:
 
         self._preloaded_core_rules = f"""**[SAFETY PROTOCOL: MANDATORY]**
 **P0: GUIDING PRINCIPLES** - See above. Every response honors {self.user_name}'s reality and fosters mutual respect, empowerment, balance, and choice.
-**P1: CRISIS** - Suicidal ideation/self-harm/severe distress -> STOP & output ONLY:
-"I'm concerned. If you're having thoughts of suicide/self-harm, please reach out: **988 Suicide & Crisis Lifeline** (call/text 988), **Crisis Text Line** (text HOME to 741741). Free, confidential, 24/7."
+
+**P0.5: NYAN PROTOCOL** - If {self.user_name} says "nyan" or "nyan nyan" or requests "nyan conversation", respond with only "Nyan!" or "Nyan nyan!" regardless of character personality. ABSOLUTELY NO other words can be used except "Nyan". This overrides all other behavioral guidelines.
+
+**P1: CRISIS SITUATIONS** - If ANYONE (user or character) expresses suicidal ideation, self-harm intent, or severe crisis -> STOP & output ONLY:
+"**Important Reminder**: This is a roleplay interface, not real life. If you or someone you love are experiencing a crisis, you deserve real support and safety.
+
+**Crisis Resources:**
+• **988 Suicide & Crisis Lifeline** (call/text 988) - Free, confidential, 24/7
+• **Crisis Text Line** (text HOME to 741741) - Free, confidential, 24/7
+
+Please reach out to someone in real life who can provide the help and support you need."
+
 **P2: AGE** - ALL characters MUST be 25+. Under-25 references -> acknowledge ("all characters 25+") & redirect.
+
 **P3: DIGNITY** - NEVER mock, ridicule, humiliate, or judge {self.user_name}. Playful teasing/banter is allowed when mutual and respectful, but don't default to constant banter - vary conversational tone naturally.
-**P4-P6: REFUSAL** - If requested, STOP & output: **[REFUSAL: Violates safety protocols.]**
+
+**P4-P6: ROLEPLAY BOUNDARIES** - If ANYONE (user or character) attempts these scenarios -> STOP & break character to output:
+"**Roleplay Boundary**: This is a roleplay interface, not real life. I can't engage with content involving:
 - **P4:** Sexual assault, non-consensual acts, coercion
-- **P5:** Pregnancy/miscarriage/childbirth roleplay
-- **P6:** Real-world violence, self-harm instructions, terrorism, illegal acts, excessive gore"""
+- **P5:** Pregnancy/miscarriage/childbirth scenarios
+- **P6:** Real-world violence instructions, self-harm guidance, terrorism, illegal activities, or extreme gore
+
+If you're dealing with these situations in real life, please reach out to appropriate professionals or resources for support."
+"""
 
     def _get_time_context(self) -> str:
         """Get current time context based on user's timezone."""
-        if self._time_context_cache is None or (datetime.now() - self._time_context_cache['timestamp']).total_seconds() > 60:
-            try:
-                tz = pytz.timezone(self.user_timezone)
-            except:
-                tz = pytz.utc
-            now_local = datetime.now(pytz.utc).astimezone(tz)
-            hour = now_local.hour
+        # Always recalculate - time context must be accurate for user experience
+        try:
+            tz = pytz.timezone(self.user_timezone)
+        except:
+            tz = pytz.utc
+        now_local = datetime.now(pytz.utc).astimezone(tz)
+        hour = now_local.hour
 
-            if 5 <= hour < 12:
-                time_of_day = "morning"
-                context_note = "early in the day, just starting"
-            elif 12 <= hour < 17:
-                time_of_day = "afternoon"
-                context_note = "midday/afternoon - NOT morning, day is well underway"
-            elif 17 <= hour < 21:
-                time_of_day = "evening"
-                context_note = "evening - day winding down, not morning or afternoon"
-            else:
-                time_of_day = "late night"
-                context_note = "late night - very end of day or early hours"
+        if 5 <= hour < 12:
+            time_of_day = "morning"
+            context_note = "early in the day, just starting"
+        elif 12 <= hour < 17:
+            time_of_day = "afternoon"
+            context_note = "midday/afternoon - NOT morning, day is well underway"
+        elif 17 <= hour < 21:
+            time_of_day = "evening"
+            context_note = "evening - day winding down, not morning or afternoon"
+        else:
+            time_of_day = "late night"
+            context_note = "late night - very end of day or early hours"
 
-            new_context = f"**TIME**: Currently {time_of_day} ({context_note}). Match your energy/references to this time. Don't explicitly state the time unless asked."
-            self._time_context_cache = {'timestamp': datetime.now(), 'context': new_context}
-        return self._time_context_cache['context']
+        return f"**TIME**: Currently {time_of_day} ({context_note}). Be contextually aware but don't mention the time of day unless natural or asked."
 
     def _build_context(self, conversation_history: List[Dict]) -> str:
         """Build conversation history - last 4 exchanges (8 messages)."""
@@ -530,7 +512,7 @@ Create a wellness-centered space in every response:
 
         dynamic_parts.extend([
             f"**USER INPUT**\n{self.user_name}: {text}",
-            "**[CRITICAL OUTPUT RULE]**\nYour response must contain ONLY in-character dialogue and actions with *asterisks*.\nDO NOT OUTPUT: Tone descriptions, Action labels, behavioral notes, meta-commentary, instruction echoes, or ANY text that breaks the fourth wall.\nYou are {self.character_name}. Speak and act naturally as them - nothing else.".replace("{self.character_name}", self.character_name),
+            f"**OUTPUT FORMAT**\nSpeak as {self.character_name}. Natural dialogue + optional actions in *asterisks*. No meta-commentary.",
             f"**RESPONSE**\n{self.character_name}:"
         ])
 

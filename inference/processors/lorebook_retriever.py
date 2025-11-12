@@ -278,7 +278,128 @@ class LorebookRetriever:
                 # Old-style chunk with pre-set content
                 processed.append(chunk)
 
-        return processed
+        # Combine personality trait chunks into unified instructions
+        combined = self._combine_personality_chunks(processed, emotion)
+
+        return combined
+
+    def _combine_personality_chunks(
+        self,
+        chunks: List[Dict[str, Any]],
+        emotion: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Combine multiple personality trait chunks from the same category into single unified instructions.
+        This reduces instruction overload and prevents conflicting guidance.
+
+        Args:
+            chunks: Processed chunks with content field
+            emotion: Current emotion context
+
+        Returns:
+            List with personality chunks combined by category
+        """
+        # Categories that should be combined
+        combinable_categories = {
+            "emotional_expression",
+            "social_energy",
+            "thinking_style",
+            "core_values",
+            "humor_style"
+        }
+
+        # Separate combinable from non-combinable chunks
+        to_combine = {}  # category -> list of chunks
+        keep_separate = []
+
+        for chunk in chunks:
+            category = chunk.get("category", "")
+            if category in combinable_categories:
+                if category not in to_combine:
+                    to_combine[category] = []
+                to_combine[category].append(chunk)
+            else:
+                keep_separate.append(chunk)
+
+        # Combine chunks within each category
+        combined_chunks = []
+        for category, category_chunks in to_combine.items():
+            if len(category_chunks) == 1:
+                # Only one chunk in this category, keep as-is
+                combined_chunks.append(category_chunks[0])
+            else:
+                # Multiple chunks - combine them
+                tones = []
+                actions = []
+                max_priority = max(c.get("priority", 50) for c in category_chunks)
+                total_tokens = sum(c.get("tokens", 50) for c in category_chunks)
+                chunk_ids = [c.get("id", "") for c in category_chunks]
+
+                for chunk in category_chunks:
+                    content = chunk.get("content", "")
+
+                    # Parse out tone and action from content
+                    # Format is typically: "action. Use tone tone."
+                    if ". Use " in content and " tone." in content:
+                        parts = content.split(". Use ")
+                        action_part = parts[0]
+                        tone_part = parts[1].replace(" tone.", "").strip()
+
+                        if action_part:
+                            actions.append(action_part)
+                        if tone_part:
+                            tones.append(tone_part)
+                    else:
+                        # Fallback - treat whole content as action
+                        actions.append(content)
+
+                # Build combined content
+                combined_content_parts = []
+
+                if actions:
+                    # Combine actions into natural flow
+                    combined_action = " ".join(actions)
+                    combined_content_parts.append(combined_action)
+
+                if tones:
+                    # Combine tones with "and" or comma separation
+                    if len(tones) == 1:
+                        tone_str = tones[0]
+                    elif len(tones) == 2:
+                        tone_str = f"{tones[0]} and {tones[1]}"
+                    else:
+                        tone_str = ", ".join(tones[:-1]) + f", and {tones[-1]}"
+                    combined_content_parts.append(f"Use {tone_str} tone.")
+
+                if combined_content_parts:
+                    combined_chunk = {
+                        "id": f"combined_{category}",
+                        "category": category,
+                        "priority": max_priority,
+                        "tokens": min(total_tokens, 150),  # Cap combined token estimate
+                        "content": " ".join(combined_content_parts),
+                        "source": "combined",
+                        "combined_from": chunk_ids
+                    }
+                    combined_chunks.append(combined_chunk)
+
+                    logger.debug(
+                        f"Combined {len(category_chunks)} chunks in category '{category}' "
+                        f"into single instruction ({len(combined_chunk['content'])} chars)"
+                    )
+
+        # Merge combined chunks with non-combinable chunks
+        final_chunks = keep_separate + combined_chunks
+
+        # Re-sort by priority
+        final_chunks.sort(key=lambda x: x.get("priority", 50), reverse=True)
+
+        logger.info(
+            f"Chunk combination: {len(chunks)} → {len(final_chunks)} chunks "
+            f"({len(chunks) - len(final_chunks)} merged)"
+        )
+
+        return final_chunks
 
     def _score_chunk(
         self,

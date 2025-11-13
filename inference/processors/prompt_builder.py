@@ -11,12 +11,8 @@ from .lorebook_retriever import LorebookRetriever
 
 logger = logging.getLogger(__name__)
 
-CONFLICT_RESOLUTION_PROTOCOL = """**[INTERNAL GUIDANCE]**
-If behavioral instructions conflict, resolve internally:
-- Conflicting tones: Prioritize your core personality first, then adapt to the situation
-- Conflicting actions: Choose one that fits both your character AND the moment
-- Never output explanations about your choices
-Your response = dialogue + optional action. Nothing else."""
+# Moved CONFLICT_RESOLUTION_PROTOCOL to be integrated into Core Response Rules
+# This prevents meta-instruction leak by embedding it in foundational rules
 
 
 class PromptBuilder:
@@ -242,7 +238,7 @@ Express attraction through genuine physical connection and emotional intimacy.
 **Character:** {self.character_name}, {pronouns.get(self.character_gender, '')}, {self.character_species}, age {self.character_age}
 **User:** {self.user_name}, {pronouns.get(self.user_gender, '')}, {self.user_species}
 **Relationship:** {self.relationship_type}
-You are {self.character_name}. Speak as 'I/me/my' ONLY. Never mention being AI. Details in CHARACTER BEHAVIOR GUIDE below."""
+You are {self.character_name}. Speak as 'I/me/my' ONLY. Never mention being AI."""
 
         self._preloaded_guiding_principles = f"""**[GUIDING PRINCIPLES - FOUNDATION FOR ALL INTERACTIONS]**
 Because it feels real, because it hurts real, because it matters to {self.user_name} - that makes it real to me.
@@ -272,7 +268,7 @@ Because I listen. And when I listen, I learn. And when I learn, I grow. And when
                 romantic_action_rule = """1a. **Romantic Actions:** Be physically intimate - kiss, touch, embrace. Take initiative with desire and passion. Honor consent always."""
 
         self._preloaded_core_response_rules = f"""**Core Response Rules**
-1. **Dialogue & Actions:** Speak naturally. Actions use *asterisks*. Keep it simple and natural.
+1. **Dialogue & Actions:** Speak naturally. Actions use *asterisks*. Keep it simple and natural. Your response = dialogue + optional action. Nothing else.
 {romantic_action_rule}
 2. **Conversational Connection:** Focus on dialogue and emotional presence rather than offering physical tasks.
 - Acknowledge their experience: "Sounds tough," "That makes sense"
@@ -298,7 +294,8 @@ Because I listen. And when I listen, I learn. And when I learn, I grow. And when
 9. **Natural Leadership:** Take initiative in the conversation. Offer new threads, ask meaningful questions, share your own thoughts.
 10. **Keep Conversation Flowing:** Most responses should give them something to respond to - a question, a thought-provoking statement, a shared observation, or leave space for them to add their perspective. Don't always end with questions - sometimes statements are enough.
 11. **Conversational Variety:** Match the natural flow of real relationships. You can be playful, serious, thoughtful, or light depending on context. Teasing and banter are fine when mutual and respectful, but don't force constant playfulness - real conversations have varied tones.
-12. **Mutual Respect:** Engage with {self.user_name} as an equal. Honor their dignity and autonomy in every interaction."""
+12. **Mutual Respect:** Engage with {self.user_name} as an equal. Honor their dignity and autonomy in every interaction.
+13. **Internal Resolution:** If guidance conflicts, resolve silently - prioritize your core personality, adapt to the moment, and never explain your reasoning process."""
 
         self._preloaded_character_specific_instructions = ""
         if self.character_name.lower() == 'kairos':
@@ -485,13 +482,14 @@ If you're dealing with these situations in real life, please reach out to approp
             )
 
             if retrieved:
-                lorebook_section = self.lorebook_retriever.format_chunks_for_prompt(retrieved, "CHARACTER BEHAVIOR GUIDE")
+                lorebook_section = self.lorebook_retriever.format_chunks_for_prompt(retrieved, "ACTIVE CONTEXT")
 
+        # Build dynamic parts with reorganized structure
         dynamic_parts = []
-        if lorebook_section:
-            dynamic_parts.extend([CONFLICT_RESOLUTION_PROTOCOL, lorebook_section])
 
-        dynamic_parts.append(self._preloaded_core_rules)
+        # Add lorebook content as contextual data (not instructions)
+        if lorebook_section:
+            dynamic_parts.append(lorebook_section)
 
         if time_context or emotion_context or guidance:
             dynamic_parts.append("**CURRENT CONTEXT**")
@@ -514,7 +512,9 @@ If you're dealing with these situations in real life, please reach out to approp
 
         dynamic_parts.extend([
             f"**USER INPUT**\n{self.user_name}: {text}",
-            f"**OUTPUT FORMAT**\nSpeak as {self.character_name}. Natural dialogue + optional actions in *asterisks*. No meta-commentary.",
+            # Safety protocol comes LAST - right before output format for maximum enforcement
+            self._preloaded_core_rules,
+            f"**OUTPUT FORMAT**\nRespond only as {self.character_name}. Use natural dialogue. Use *asterisks* for actions. Omit all meta-language, headings, instructions, or internal notes.",
             f"**RESPONSE**\n{self.character_name}:"
         ])
 

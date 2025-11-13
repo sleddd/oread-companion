@@ -586,14 +586,14 @@ class LorebookRetriever:
     def format_chunks_for_prompt(
         self,
         chunks: List[Dict[str, Any]],
-        section_name: str = "CHARACTER BEHAVIOR GUIDE"
+        section_name: str = "ACTIVE CONTEXT"
     ) -> str:
         """
         Format retrieved chunks into prompt-ready text.
 
         Args:
             chunks: List of chunk dicts
-            section_name: Name of the prompt section
+            section_name: Name of the prompt section (default: ACTIVE CONTEXT)
 
         Returns:
             Formatted string ready to inject into prompt
@@ -604,15 +604,14 @@ class LorebookRetriever:
         # Sort by priority (highest first)
         sorted_chunks = sorted(chunks, key=lambda x: x["priority"], reverse=True)
 
-        # Build formatted output compactly
-        lines = [f"### {section_name} ###"]
+        # Build formatted output - simple bullet list without aggressive headers
+        lines = []
 
         for chunk in sorted_chunks:
-            # Add chunk content
+            # Add chunk content without heavy formatting
             content = chunk["content"].strip()
-            lines.append(content)
-
-        lines.append(f"### END {section_name} ###")
+            # Present as data points rather than instructions
+            lines.append(f"> {content}")
 
         return "\n".join(lines)
 

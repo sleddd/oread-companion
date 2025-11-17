@@ -701,24 +701,43 @@ AVOIDS: Heavy metal music"></textarea>
             tabButtons.forEach(button => {
                 button.addEventListener('click', function() {
                     const targetTab = this.getAttribute('data-tab');
+                    const targetPanel = document.getElementById(targetTab);
 
-                    // Remove active class from all buttons and panels
-                    tabButtons.forEach(btn => btn.classList.remove('active'));
-                    tabPanels.forEach(panel => panel.classList.remove('active'));
+                    // Only switch if clicking a different tab
+                    if (!targetPanel.classList.contains('active')) {
+                        // Add active to new panel FIRST (prevents flicker)
+                        targetPanel.classList.add('active');
 
-                    // Add active class to clicked button and corresponding panel
-                    this.classList.add('active');
-                    document.getElementById(targetTab).classList.add('active');
+                        // Then remove from others
+                        tabPanels.forEach(panel => {
+                            if (panel !== targetPanel) {
+                                panel.classList.remove('active');
+                            }
+                        });
 
-                    // Resize textareas in the active tab
-                    setTimeout(() => {
-                        const activeTextareas = document.getElementById(targetTab).querySelectorAll('textarea');
-                        activeTextareas.forEach(textarea => autoResizeTextarea(textarea));
-                    }, 50);
+                        // Update button states
+                        tabButtons.forEach(btn => btn.classList.remove('active'));
+                        this.classList.add('active');
+
+                        // Resize textareas in the active tab
+                        setTimeout(() => {
+                            const activeTextareas = targetPanel.querySelectorAll('textarea');
+                            activeTextareas.forEach(textarea => autoResizeTextarea(textarea));
+                        }, 50);
+                    }
                 });
             });
         });
     </script>
+    <style>
+        /* Remove flicker animation from tab panels */
+        .tab-panel {
+            animation: none !important;
+        }
+        .tab-panel.active {
+            animation: none !important;
+        }
+    </style>
     <script src="/assets/js/config.js"></script>
     <script src="/assets/js/auth.js"></script>
     <script src="/assets/js/settings.js"></script>

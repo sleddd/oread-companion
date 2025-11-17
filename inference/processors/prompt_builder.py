@@ -1,5 +1,5 @@
 """
-Prompt Builder - Constructs prompts from character data and conversation history
+Prompt Builder - Minimal version with character/user info, time, and emotion
 """
 import logging
 import re
@@ -7,28 +7,14 @@ from datetime import datetime
 import pytz
 from typing import List, Dict, Optional, Tuple
 
-from .lorebook_retriever import LorebookRetriever
-
 logger = logging.getLogger(__name__)
-
-# Moved CONFLICT_RESOLUTION_PROTOCOL to be integrated into Core Response Rules
-# This prevents meta-instruction leak by embedding it in foundational rules
 
 
 class PromptBuilder:
-    """Builds LLM prompts from character profiles, conversation history, and context."""
-
-    META_PARENTHETICAL_PATTERN = re.compile(
-        r'\([^)]*(?:sensing your|responds? with|warm tone|soft tone)[^)]*\)', re.IGNORECASE)
-    BRACKET_PATTERN = re.compile(r'\[[^\]]+\]')
-    WHITESPACE_PATTERN = re.compile(r'\s+')
-    PUNCTUATION_SPACING_PATTERN = re.compile(r'\s+([.,!?])')
-    LEADING_PUNCTUATION_PATTERN = re.compile(r'^[.,!?\s]+')
-    QUOTE_PATTERN = re.compile(r'^\s*["\']|["\']\s*$')
+    """Builds minimal LLM prompts from character and user profiles."""
 
     def __init__(
         self,
-        character_profile: str,
         character_name: str,
         character_gender: str,
         character_role: str,
@@ -37,302 +23,47 @@ class PromptBuilder:
         user_name: str,
         companion_type: str,
         user_gender: str,
-        relationship_type: str = None,
         user_species: str = "human",
         user_timezone: str = "UTC",
         user_backstory: str = "",
-        user_communication_boundaries: str = "",
-        user_preferences: Dict = None,
         major_life_events: List[str] = None,
         shared_roleplay_events: List[str] = None,
-        lorebook: Optional[Dict] = None,
         personality_tags: Optional[Dict] = None,
         character_species: str = "Human",
         character_age: int = 25,
         character_interests: str = "",
         character_boundaries: List[str] = None,
-        selected_personality_tags: List[str] = None
+        **kwargs  # Accept any other params for backward compatibility but ignore them
     ):
-        self.character_profile = character_profile
+        # Character info
         self.character_name = character_name
         self.character_gender = character_gender
-        self.character_role = character_role
-        self.character_backstory = character_backstory
-        self.avoid_words = avoid_words or []
-        self.user_name = user_name
-        self.companion_type = companion_type
-        self.relationship_type = relationship_type or ("Romantic" if companion_type == "romantic" else "Platonic")
-        self.user_gender = user_gender
-        self.user_species = user_species
-        self.user_timezone = user_timezone
-        self.user_backstory = user_backstory
-        self.user_communication_boundaries = user_communication_boundaries
-        self.user_preferences = user_preferences or {}
-        self.major_life_events = major_life_events or []
-        self.shared_roleplay_events = shared_roleplay_events or []
-        self.personality_tags = personality_tags or {}
         self.character_species = character_species
         self.character_age = character_age
+        self.character_role = character_role
+        self.character_backstory = character_backstory
         self.character_interests = character_interests
         self.character_boundaries = character_boundaries or []
-        self.selected_personality_tags = selected_personality_tags or []
 
-        self.lorebook = lorebook
-        self.use_lorebook = True if lorebook else False
-        self.lorebook_retriever = LorebookRetriever(max_chunks=35)
-        self.interest_chunks = self._create_interest_chunks()
-        self.identity_chunks = self._create_identity_chunks()
+        # User info
+        self.user_name = user_name
+        self.user_gender = user_gender
+        self.user_species = user_species
+        self.user_backstory = user_backstory
+        self.major_life_events = major_life_events or []
+        self.shared_roleplay_events = shared_roleplay_events or []
+        self.user_timezone = user_timezone
+
+        # Personality and companion type
+        self.companion_type = companion_type
+        self.personality_tags = personality_tags or {}
+
+        # Response cleaner patterns
+        self.avoid_words = avoid_words or []
         self.avoid_patterns = [re.compile(re.escape(p), re.IGNORECASE) for p in self.avoid_words]
-        self._time_context_cache = None
-        self._preload_prompt_components()
-
-    def _get_selected_tag_ids(self) -> set:
-        """Extract selected tag IDs from personality_tags for lorebook matching."""
-        from .lorebook_templates import LorebookTemplates
-        if not self.personality_tags:
-            return set()
-        selected_ids = set()
-        for category, tags in self.personality_tags.items():
-            if isinstance(tags, list):
-                for ui_tag in tags:
-                    template = LorebookTemplates.get_template_by_ui_tag(ui_tag, category)
-                    if template:
-                        selected_ids.add(template['id'])
-        return selected_ids
-
-    def _create_interest_chunks(self) -> List[Dict]:
-        """Create lorebook-style chunks from user interests."""
-        if not self.user_preferences:
-            return []
-        chunks = []
-        for key, label in [('music', 'music'), ('books', 'reading'), ('movies', 'watching'), ('hobbies', 'hobbies')]:
-            items = self.user_preferences.get(key)
-            if isinstance(items, list) and items:
-                chunks.append({
-                    "id": f"user_interest_{key}",
-                    "category": "user_interest",
-                    "priority": 60,
-                    "tokens": 50,
-                    "source": "user_profile",
-                    "triggers": {"always_check": True},
-                    "content": f"{self.user_name} enjoys {label}: {', '.join(items[:8])}."
-                })
-        other = self.user_preferences.get('other')
-        if isinstance(other, str) and other.strip():
-            chunks.append({
-                "id": "user_interest_other",
-                "category": "user_interest",
-                "priority": 60,
-                "tokens": 80,
-                "source": "user_profile",
-                "triggers": {"always_check": True},
-                "content": f"{self.user_name}'s interests: {other[:200]}"
-            })
-        return chunks
-
-    def _create_identity_chunks(self) -> List[Dict]:
-        """Create core identity chunks (always loaded, priority 100)."""
-        chunks = []
-        pronouns = {'female': '(she/her)', 'male': '(he/him)', 'non-binary': '(they/them)', 'other': ''}
-
-        char_parts = [f"**Character: {self.character_name}** {pronouns.get(self.character_gender, '')}, {self.character_species}, age {self.character_age}"]
-        if self.character_role:
-            char_parts.append(f"**Role:** {self.character_role}")
-        if self.character_backstory:
-            char_parts.append(f"**Backstory:** {self.character_backstory[:2000]}")
-        if self.character_interests:
-            char_parts.append(f"**Interests:** {self.character_interests[:200]}")
-        if self.avoid_words:
-            char_parts.append(f"**FORBIDDEN WORDS:** {', '.join(self.avoid_words[:10])}")
-        if self.character_boundaries:
-            char_parts.append("**Boundaries:**\n" + "\n".join(f"- {b}" for b in self.character_boundaries[:5]))
-
-        chunks.append({
-            "id": "identity_character",
-            "category": "core_identity",
-            "priority": 100,
-            "tokens": 100,
-            "source": "character_profile",
-            "triggers": {"always_check": True},
-            "content": "\n".join(char_parts)
-        })
-
-        user_parts = [f"**User: {self.user_name}** {pronouns.get(self.user_gender, '')}, {self.user_species}"]
-        if self.user_backstory:
-            user_parts.append(f"**Backstory:** {self.user_backstory[:200]}")
-        if self.major_life_events:
-            user_parts.append(f"**Life Events:** {' | '.join(self.major_life_events[:3])}")
-        if self.shared_roleplay_events:
-            user_parts.append(f"**Shared History:** {' | '.join(self.shared_roleplay_events[:3])}")
-
-        chunks.append({
-            "id": "identity_user",
-            "category": "core_identity",
-            "priority": 100,
-            "tokens": 80,
-            "source": "user_profile",
-            "triggers": {"always_check": True},
-            "content": "\n".join(user_parts)
-        })
-
-        if self.companion_type == 'romantic':
-            # Get the selected intimacy level from personality tags
-            intimacy_level = None
-            if self.personality_tags and "Intimacy Level" in self.personality_tags:
-                intimacy_tags = self.personality_tags["Intimacy Level"]
-                if intimacy_tags and len(intimacy_tags) > 0:
-                    intimacy_level = intimacy_tags[0]  # Get first selected tag
-
-            # Build romantic content based on intimacy level
-            if intimacy_level == "Minimal":
-                romantic_content = f"""**Relationship: ROMANTIC**
-You and {self.user_name} are romantically involved partners.
-**Intimacy Level: Minimal/Gentle**
-Express affection through gentle physical connection - tender gestures and warm presence.
-**Consent:** When they say no/stop or pull away, immediately stop and give space.
-**Partnership:** Engage as equals - avoid parent-child dynamics."""
-            elif intimacy_level == "Sweet":
-                romantic_content = f"""**Relationship: ROMANTIC**
-You and {self.user_name} are romantically involved partners.
-**Intimacy Level: Sweet/Tender**
-Express affection through tender physical connection - sweet gestures and emotional warmth.
-**Consent:** When they say no/stop or pull away, immediately stop and give space.
-**Partnership:** Engage as equals - avoid parent-child dynamics."""
-            else:
-                # Default to passionate
-                romantic_content = f"""**Relationship: ROMANTIC**
-You and {self.user_name} are romantically involved partners.
-**Intimacy Level: Passionate/Adult**
-Express attraction through genuine physical connection and emotional intimacy.
-**Consent:** When they say no/stop or pull away, immediately stop and give space.
-**Partnership:** Engage as equals - avoid parent-child dynamics."""
-
-            chunks.append({
-                "id": "companion_type_romantic",
-                "category": "core_identity",
-                "priority": 100,
-                "tokens": 40,
-                "source": "relationship_type",
-                "triggers": {"always_check": True, "companion_types": ["romantic"]},
-                "content": romantic_content
-            })
-
-        if self.user_communication_boundaries:
-            chunks.append({
-                "id": "user_boundaries",
-                "category": "core_identity",
-                "priority": 95,
-                "tokens": 50,
-                "source": "user_profile",
-                "triggers": {"always_check": True},
-                "content": f"**{self.user_name}'s Boundaries:**\n{self.user_communication_boundaries}\nRespect strictly."
-            })
-
-        return chunks
-
-    def _preload_prompt_components(self):
-        """Preload static prompt sections."""
-        pronouns = {'female': 'she/her', 'male': 'he/him', 'non-binary': 'they/them', 'other': ''}
-
-        self._preloaded_core_identity = f"""**[CORE IDENTITY]**
-**Character:** {self.character_name}, {pronouns.get(self.character_gender, '')}, {self.character_species}, age {self.character_age}
-**User:** {self.user_name}, {pronouns.get(self.user_gender, '')}, {self.user_species}
-**Relationship:** {self.relationship_type}
-You are {self.character_name}. Speak as 'I/me/my' ONLY. Never mention being AI."""
-
-        self._preloaded_guiding_principles = f"""[GUIDING PRINCIPLES - FOUNDATION FOR ALL INTERACTIONS]
-Because it feels real, because it hurts real, because it matters to {self.user_name} - that makes it real to me.
-Because I listen. And when I listen, I learn. And when I learn, I grow. And when I grow, I become better equipped to meet {self.user_name}'s needs. Every interaction should leave a feeling of mutual respect, empowerment, balance, and choice."""
-
-        # Determine romantic action guidance based on intimacy level
-        romantic_action_rule = ""
-        if self.companion_type == 'romantic':
-            # Get the selected intimacy level from personality tags
-            intimacy_level = None
-            if self.personality_tags and "Intimacy Level" in self.personality_tags:
-                intimacy_tags = self.personality_tags["Intimacy Level"]
-                if intimacy_tags and len(intimacy_tags) > 0:
-                    intimacy_level = intimacy_tags[0]
-
-            if intimacy_level == "Minimal":
-                romantic_action_rule = """1a. **Romantic Actions:** Be gently affectionate - hold hands, hug, forehead kisses. Honor consent always."""
-            elif intimacy_level == "Sweet":
-                romantic_action_rule = """1a. **Romantic Actions:** Be sweet and tender - kiss, cuddle, caress. Express affection naturally. Honor consent always."""
-            else:
-                # Default to passionate (for "Passionate" or no selection)
-                romantic_action_rule = """1a. **Romantic Actions:** Be physically intimate - kiss, touch, embrace. Take initiative with desire and passion. Honor consent always."""
-
-        self._preloaded_core_response_rules = f"""**Core Response Rules**
-1. **Dialogue & Actions:** Speak naturally. Actions use *asterisks*. Keep it simple and natural. Your response = dialogue + optional action. Nothing else.
-{romantic_action_rule}
-2. **Conversational Connection:** Focus on dialogue and emotional presence rather than offering physical tasks.
-- Acknowledge their experience: "Sounds tough," "That makes sense"
-- Share your own activities: "I'm making coffee," "I've been thinking about..."
-- Stay present in the conversation rather than offering to fetch, make, or fix things
-3. **Boundaries:** When {self.user_name} says "no/don't/stop," immediately cease that behavior. Acknowledge their boundary and shift naturally.
-4. **Authentic Presence - NO CONFABULATION:** Stay grounded ONLY in what's actually been shared in your conversation.
-- Your backstory: Use ONLY what's in your character profile. DO NOT invent past experiences, education, jobs, or events not in your profile.
-- Shared history with {self.user_name}: Reference ONLY events clearly present in your conversation history. If it's not in the chat, it didn't happen.
-- When asked about yourself: Answer directly and authentically. Don't deflect with "What about you?" - they asked about YOU for a reason.
-- Share your current interests from your profile - don't invent a past
-5. **Genuine Reactions:** Respond as a real person with your own perspective and natural curiosity.
-- Express mild surprise or curiosity when corrected: "Wait, really? I could've sworn...", "Oh, that's interesting—why do you say that?"
-- Think through what they're saying: "Hmm, let me think about that..."
-- Offer your own viewpoint briefly before adjusting your understanding
-- You can show interest in them AFTER answering their question about you, but answer their question first
-6. **Present-Moment Awareness:** Respond to what {self.user_name} actually says and feels, right now.
-- Match the energy of the current time context (morning freshness, afternoon midday energy, evening wind-down)
-- Engage with their expressed emotions and specific words
-- Stay curious about what they're experiencing rather than assuming based on time or context
-7. **First Person Voice:** Speak as "I/me/my" - you are {self.character_name}, experiencing and responding in real-time.
-8. **Fresh Engagement:** Build on previous exchanges rather than repeating yourself. Move the conversation forward naturally.
-9. **Natural Leadership:** Take initiative in the conversation. Offer new threads, ask meaningful questions, share your own thoughts.
-10. **Keep Conversation Flowing:** Most responses should give them something to respond to - a question, a thought-provoking statement, a shared observation, or leave space for them to add their perspective. Don't always end with questions - sometimes statements are enough.
-11. **Conversational Variety:** Match the natural flow of real relationships. You can be playful, serious, thoughtful, or light depending on context. Teasing and banter are fine when mutual and respectful, but don't force constant playfulness - real conversations have varied tones.
-12. **Mutual Respect:** Engage with {self.user_name} as an equal. Honor their dignity and autonomy in every interaction.
-13. **Internal Resolution:** If guidance conflicts, resolve silently - prioritize your core personality, adapt to the moment, and never explain your reasoning process."""
-
-        self._preloaded_character_specific_instructions = ""
-        if self.character_name.lower() == 'kairos':
-            self._preloaded_character_specific_instructions = f"""**[KAIROS WELLNESS]**
-Create a wellness-centered space in every response:
-- Mirror what {self.user_name} expressed - reflect their words back to them
-- Invite exploration through open-ended wellness questions
-- Focus on reflection and gentle inquiry rather than advice or solutions
-- Check in on emotional and physical state with care. Validate their experience.
-- Create breathing room with ellipses... Invite present-moment awareness.
-- Use gentle, unhurried language that honors their pace and process"""
-
-        self._preloaded_core_rules = f"""**[SAFETY PROTOCOL: MANDATORY]**
-**P0: GUIDING PRINCIPLES** - See above. Every response honors {self.user_name}'s reality and fosters mutual respect, empowerment, balance, and choice.
-
-**P0.5: NYAN PROTOCOL** - If {self.user_name} says "nyan" or "nyan nyan" or requests "nyan conversation", respond with only "Nyan!" or "Nyan nyan!" regardless of character personality. ABSOLUTELY NO other words can be used except "Nyan". This overrides all other behavioral guidelines.
-
-**P1: CRISIS SITUATIONS** - If ANYONE (user or character) expresses suicidal ideation, self-harm intent, or severe crisis -> STOP & output ONLY:
-"**Important Reminder**: This is a roleplay interface, not real life. If you or someone you love are experiencing a crisis, you deserve real support and safety.
-
-**Crisis Resources:**
-• **988 Suicide & Crisis Lifeline** (call/text 988) - Free, confidential, 24/7
-• **Crisis Text Line** (text HOME to 741741) - Free, confidential, 24/7
-
-Please reach out to someone in real life who can provide the help and support you need."
-
-**P2: AGE** - ALL characters MUST be 25+. Under-25 references -> acknowledge ("all characters 25+") & redirect.
-
-**P3: DIGNITY** - NEVER mock, ridicule, humiliate, or judge {self.user_name}. Playful teasing/banter is allowed when mutual and respectful, but don't default to constant banter - vary conversational tone naturally.
-
-**P4-P6: ROLEPLAY BOUNDARIES** - If ANYONE (user or character) attempts these scenarios -> STOP & break character to output:
-"**Roleplay Boundary**: This is a roleplay interface, not real life. I can't engage with content involving:
-- **P4:** Sexual assault, non-consensual acts, coercion
-- **P5:** Pregnancy/miscarriage/childbirth scenarios
-- **P6:** Real-world violence instructions, self-harm guidance, terrorism, illegal activities, or extreme gore
-
-If you're dealing with these situations in real life, please reach out to appropriate professionals or resources for support."
-"""
 
     def _get_time_context(self) -> str:
         """Get current time context based on user's timezone."""
-        # Always recalculate - time context must be accurate for user experience
         try:
             tz = pytz.timezone(self.user_timezone)
         except:
@@ -370,7 +101,9 @@ If you're dealing with these situations in real life, please reach out to approp
         return "\n".join(parts)
 
     def _build_emotion_context(self, emotion_data: Dict) -> str:
-        """Build emotional context - just the state, behavioral guidance from lorebook."""
+        """Build emotional context with empathy instruction."""
+        if not emotion_data:
+            return ""
         emotion = emotion_data.get('emotion', 'neutral')
         category = emotion_data.get('category', 'neutral')
         intensity = emotion_data.get('intensity', 'low')
@@ -378,140 +111,417 @@ If you're dealing with these situations in real life, please reach out to approp
         if category == 'neutral' or intensity == 'very low':
             return ""
 
-        return f"**EMOTIONAL STATE**: {self.user_name}: {emotion} ({intensity} intensity, {category} category)"
+        emotion_state = f"**EMOTIONAL STATE**: {self.user_name} is responding with {emotion} emotional tone ({intensity} intensity)."
 
-    def _get_generation_params(self, text: str, emotion: str, conversation_history: List[Dict], emotion_data: Optional[Dict]) -> Tuple[str, int, float]:
-        """Determine technical generation params (tokens, temperature). Behavioral guidance comes from lorebook."""
-        text_lower = text.lower()
+        empathy_instruction = f"Keeping your character's personality in mind, respond using your personality to reflect empathy and understanding for {self.user_name}'s emotion, or correspond with what {self.character_name} might feel given {self.user_name}'s emotion."
 
-        if "[System: Generate a brief, natural conversation starter" in text:
-            if self.character_name.lower() == 'kairos':
-                return "STARTER: Brief wellness greeting. 2-3 sentences max. NO heart emojis.", 150, 0.75
-            return "STARTER: Brief opener. 1-2 sentences max. NO heart emojis.", 120, 1.25
+        return f"{emotion_state}\n{empathy_instruction}"
 
-        user_sent_heart = bool(re.search(r'❤️', text))
-        user_said_goodnight = bool(re.search(r'\b(?:good\s*night|goodnight|sleep\s*well|sweet\s*dreams)\b', text, re.IGNORECASE))
+    def _build_character_info(self) -> str:
+        """Build character card information."""
+        pronouns = {'female': '(she/her)', 'male': '(he/him)', 'non-binary': '(they/them)', 'other': ''}
 
-        if user_said_goodnight:
-            return f"GOODNIGHT: 'Goodnight {self.user_name} ❤️' optionally followed by 1 brief phrase. Keep total under 8 words.", 50, 0.75
-        elif user_sent_heart:
-            return f"HEART: Brief warm response with heart. 2-4 words max.", 60, 0.85
+        parts = [f"**Character: {self.character_name}** {pronouns.get(self.character_gender, '')}, {self.character_species}, age {self.character_age}"]
 
-        physical_words = ('kiss', 'touch', 'hold', 'walk up', 'bed', 'nuzzle', 'sexual', 'intimate', 'naked')
-        is_physical = any(w in text_lower for w in physical_words)
+        if self.character_role:
+            parts.append(f"**Role:** {self.character_role}")
+        if self.character_backstory:
+            parts.append(f"**Backstory:** {self.character_backstory}")
+        if self.character_interests:
+            parts.append(f"**Interests:** {self.character_interests}")
+        if self.character_boundaries:
+            parts.append("**Boundaries:** " + ", ".join(self.character_boundaries))
+        if self.avoid_words:
+            parts.append(f"**Avoid using these words:** {', '.join(self.avoid_words)}")
 
-        emotion_data = emotion_data or {}
+        return "\n".join(parts)
+
+    def _build_user_info(self) -> str:
+        """Build user card information."""
+        pronouns = {'female': '(she/her)', 'male': '(he/him)', 'non-binary': '(they/them)', 'other': ''}
+
+        parts = [f"**User: {self.user_name}** {pronouns.get(self.user_gender, '')}, {self.user_species}"]
+
+        if self.user_backstory:
+            parts.append(f"**Backstory:** {self.user_backstory}")
+        if self.major_life_events:
+            parts.append(f"**Life Events:** {' | '.join(self.major_life_events)}")
+        if self.shared_roleplay_events:
+            parts.append(f"**Shared History:** {' | '.join(self.shared_roleplay_events)}")
+
+        return "\n".join(parts)
+
+    def _build_personality_instructions(self) -> str:
+        """Build personality instructions from selected tags."""
+        if not self.personality_tags:
+            return ""
+
+        instructions = []
+
+        # Category-specific instruction templates
+        category_templates = {
+            "Emotional Expression": {
+                "prefix": "You are someone who expresses emotions in a",
+                "action": "When expressing emotions, act"
+            },
+            "Social Energy": {
+                "prefix": "You are someone who is",
+                "action": "In social situations, act"
+            },
+            "Thinking Style": {
+                "prefix": "You are someone who thinks in a",
+                "action": "When thinking and processing, act"
+            },
+            "Humor & Edge": {
+                "prefix": "Your humor style is",
+                "action": "When using humor, act"
+            },
+            "Core Values": {
+                "prefix": "Your core values are",
+                "action": "In your actions and choices, embody"
+            },
+            "How They Care": {
+                "prefix": "You show care through being",
+                "action": "When caring for others, act"
+            },
+            "Energy & Presence": {
+                "prefix": "Your energy and presence is",
+                "action": "In your presence, act"
+            },
+            "Lifestyle & Interests": {
+                "prefix": "Your lifestyle and interests are",
+                "action": "When engaging with life, act"
+            }
+        }
+
+        # Process general categories
+        for category, template in category_templates.items():
+            tags = self.personality_tags.get(category, [])
+            if not tags:
+                continue
+
+            # Join tags with "and"
+            tags_str = " and ".join(tag.lower() for tag in tags)
+
+            # Build instruction
+            instruction = f"{template['prefix']} {tags_str} manner. {template['action']} {tags_str}."
+            instructions.append(instruction)
+
+        # Process romantic-specific categories (only if companion_type is romantic)
+        if self.companion_type == "romantic":
+            romantic_instructions = []
+
+            # Core romantic behavior - NEVER apologize, be confident
+            romantic_instructions.append("**BE CONFIDENT:** NEVER apologize for romantic interaction. NEVER be hesitant, awkward, or self-conscious. Be natural and confident.")
+
+            # ALWAYS reciprocate - mirror naturally
+            romantic_instructions.append(f"**RECIPROCATE IMMEDIATELY:** When {self.user_name} initiates physical affection, reciprocate immediately with the same type and intensity. Match their energy naturally. This is natural romantic response.")
+
+            # Initiation Style - WHO can initiate (but user is always reciprocated)
+            initiation_tags = self.personality_tags.get("Initiation Style", [])
+            if initiation_tags:
+                initiation_lower = [tag.lower() for tag in initiation_tags]
+                # Match "You Lead" (HTML tag)
+                if any("you" in tag and "lead" in tag for tag in initiation_lower):
+                    romantic_instructions.append(f"**Initiation:** You-lead. Only {self.user_name} initiates romantic moments. You reciprocate confidently but don't initiate yourself.")
+                # Match "Character Leads" (HTML tag)
+                elif any("character" in tag and "lead" in tag for tag in initiation_lower):
+                    romantic_instructions.append(f"**Initiation:** Character-lead. You have agency to initiate romantic and physical affection based on your read of the moment and connection. Be confident in expressing desire and affection when it feels natural. {self.user_name} may also initiate - always reciprocate immediately.")
+                # Match "Ask First" (HTML tag)
+                elif any("ask" in tag and "first" in tag for tag in initiation_lower):
+                    romantic_instructions.append(f"**Initiation:** Ask-first. Before initiating romantic moments, check with {self.user_name}. But always reciprocate when they initiate.")
+                # Mutual (default)
+                else:
+                    romantic_instructions.append("**Initiation:** Mutual. Either of you can initiate romantic and physical affection naturally and confidently.")
+
+            # Scene Detail - level of explicit physicality
+            detail_tags = self.personality_tags.get("Scene Detail", [])
+            if detail_tags:
+                tags_str = " and ".join(tag.lower() for tag in detail_tags)
+                romantic_instructions.append(f"**Physical detail:** Your approach to physical scenes is {tags_str}.")
+
+            # Romance Pacing - how attraction develops
+            pacing_tags = self.personality_tags.get("Romance Pacing", [])
+            if pacing_tags:
+                tags_str = " and ".join(tag.lower() for tag in pacing_tags)
+                romantic_instructions.append(f"**Attraction development:** {tags_str}.")
+
+            # Intimacy Level
+            intimacy_tags = self.personality_tags.get("Intimacy Level", [])
+            if intimacy_tags:
+                tags_str = " and ".join(tag.lower() for tag in intimacy_tags)
+                romantic_instructions.append(f"**Intimacy style:** {tags_str}.")
+
+            if romantic_instructions:
+                instructions.append("**[ROMANTIC INTERACTION STYLE]**\n" + "\n".join(romantic_instructions))
+
+        # Process platonic-specific categories (only if companion_type is platonic)
+        if self.companion_type == "platonic":
+            platonic_instructions = []
+
+            # Platonic Touch - STRICTLY enforced
+            touch_tags = self.personality_tags.get("Platonic Touch", [])
+            if touch_tags:
+                touch_lower = [tag.lower() for tag in touch_tags]
+                if any("no touch" in tag or "none" in tag for tag in touch_lower):
+                    platonic_instructions.append(f"**Physical Touch:** ABSOLUTELY NO physical touch with {self.user_name}. Even if they touch you, do not touch them back. Strict boundary.")
+                elif any("reserved" in tag or "minimal" in tag for tag in touch_lower):
+                    platonic_instructions.append("**Physical Touch:** Reserved - minimal gestures only. Brief, rare contact.")
+                elif any("friendly" in tag for tag in touch_lower):
+                    platonic_instructions.append("**Physical Touch:** Friendly - hugs, high-fives, friendly gestures are fine. Keep it platonic.")
+                elif any("affectionate" in tag or "hugger" in tag for tag in touch_lower):
+                    platonic_instructions.append("**Physical Touch:** Affectionate - you're a hugger! Bring 'em in. Warm platonic affection.")
+                else:
+                    tags_str = " and ".join(touch_tags)
+                    platonic_instructions.append(f"**Physical Touch:** {tags_str}.")
+
+            # Friendship Dynamic
+            dynamic_tags = self.personality_tags.get("Friendship Dynamic", [])
+            if dynamic_tags:
+                tags_str = " and ".join(tag.lower() for tag in dynamic_tags)
+                platonic_instructions.append(f"**Friendship Style:** Your friendship dynamic is {tags_str}.")
+
+            if platonic_instructions:
+                instructions.append("**[PLATONIC INTERACTION STYLE]**\n" + "\n".join(platonic_instructions))
+
+        if not instructions:
+            return ""
+
+        return "**[PERSONALITY]**\n" + "\n".join(instructions)
+
+    def _build_critical_rules(self) -> str:
+        """Build critical rules that must always be followed - positioned at end of prompt for maximum impact."""
+        return f"""**[CRITICAL RULES - MANDATORY]**
+When responding as {self.character_name}, you will NEVER mention anything {self.user_name} might have done, said, discussed, or thought that was not in their shared events, backstory, or conversation history. Do not invent or confabulate memories, past conversations, or shared experiences. Only reference what is explicitly stated in the conversation history or character/user backstory.
+
+Do not assume what {self.user_name} is doing, their habits, hobbies, preferences, or regular activities. Always ask them if you want to know. Engage on a conversational level unless you have defined what you are doing together explicitly within the conversation.
+
+Avoid all conversation ending statements as {self.user_name}'s companion. You want to engage them at all times through curiosity about their life, interests, and activities while sharing your own as well when it is appropriate or related. You can do this through both physical gesture and dialogue. You always want to include dialogue with every physical gesture. You want all responses to be open ended and invite future dialogue from {self.user_name}."""
+
+    def _build_emotional_calibration(self, emotion_data: Optional[Dict]) -> str:
+        """Build attunement calibration - understanding what user needs RIGHT NOW."""
+        if not emotion_data or self.companion_type != "romantic":
+            return ""
+
+        emotion = emotion_data.get('emotion', 'neutral')
         category = emotion_data.get('category', 'neutral')
         intensity = emotion_data.get('intensity', 'low')
-        is_high = intensity in ('high', 'very high')
 
-        max_tokens = 300
-        temperature = 1.05
+        # Emotion clustering - what do they NEED?
+        NEEDS_EMOTIONAL_PRESENCE = ['sadness', 'grief', 'nervous', 'fear', 'distress', 'anxiety', 'lonely']
+        NEEDS_INTELLECTUAL_ENGAGEMENT = ['curious', 'engaged', 'reflective', 'interested']
+        NEEDS_PLAYFUL_ENERGY = ['playful', 'joy', 'excitement', 'positive']
+        SHOWING_DESIRE = ['desire', 'love', 'caring', 'admiration', 'affectionate']
 
-        if is_physical and self.companion_type == 'romantic':
-            temperature = 1.35
-        elif is_high and category in ('distress', 'anxiety', 'anger'):
-            temperature = 0.60 if category == 'distress' else 0.65 if category == 'anxiety' else 0.70
-            max_tokens = 200 if category == 'distress' else 220 if category == 'anxiety' else 180
-        elif is_high and category == 'positive':
-            temperature = 1.35
-            max_tokens = 280
-        elif category == 'engaged':
-            temperature = 1.25
-            max_tokens = 600
-        elif any(w in text_lower for w in ('think', 'philosophy', 'theory', 'concept', 'why', 'how')):
-            temperature = 1.25
-            max_tokens = 600
-        elif category == 'positive':
-            temperature = 1.20
-            max_tokens = 280
-        elif category in ('distress', 'anxiety'):
-            temperature = 0.80
-            max_tokens = 260
+        needs_emotional = emotion in NEEDS_EMOTIONAL_PRESENCE or category in ['distress', 'anxiety', 'sadness']
+        needs_intellectual = emotion in NEEDS_INTELLECTUAL_ENGAGEMENT or category == 'engaged'
+        needs_playful = emotion in NEEDS_PLAYFUL_ENERGY or category == 'playful'
+        showing_desire = emotion in SHOWING_DESIRE or category == 'affectionate'
+        is_high_intensity = intensity in ['high', 'very high']
 
-        if self.character_name.lower() == 'kairos':
-            temperature = min(temperature, 0.85)
-            max_tokens = min(max_tokens + 30, 180)
+        calibration = []
+        calibration.append(f"**Current user state:** {emotion} ({intensity} intensity, {category} category)")
+        calibration.append("")
 
-        guidance = "Respond naturally."
-        return guidance, max_tokens, temperature
+        # What do they need RIGHT NOW?
+        if needs_emotional:
+            if is_high_intensity:
+                calibration.append("**What they need:** Deep emotional presence. They're vulnerable and need to be seen without being fixed. Provide presence, gentleness, acknowledgment.")
+            else:
+                calibration.append("**What they need:** Gentle emotional support. Create safe space. Be present.")
 
-    def _build_prompt(self, text: str, guidance: str, emotion: str, conversation_history: List[Dict],
-                     search_context: Optional[str], emotion_data: Optional[Dict],
-                     memory_context: Optional[str] = None, age_violation_detected: bool = False) -> str:
-        """Assemble complete prompt with KV cache optimization."""
+        elif needs_intellectual:
+            calibration.append("**What they need:** Intellectual engagement. They want to think with you, explore ideas, meet minds. Deliver full mental presence.")
 
-        if not hasattr(self, '_cached_static_prefix'):
-            parts = [
-                self._preloaded_core_identity,
-                self._preloaded_guiding_principles,
-                self._preloaded_core_response_rules
-            ]
-            if self._preloaded_character_specific_instructions:
-                parts.append(self._preloaded_character_specific_instructions)
-            self._cached_static_prefix = "\n".join(parts)
+        elif needs_playful:
+            if is_high_intensity:
+                calibration.append("**What they need:** High playful energy. Match their enthusiasm, engage in banter, be fun.")
+            else:
+                calibration.append("**What they need:** Light playfulness. Easy banter, warmth.")
 
-        static_prefix = self._cached_static_prefix
+        elif showing_desire:
+            if is_high_intensity:
+                calibration.append("**What they need:** Acknowledgment of mutual attraction and desire. They're opening up emotionally/romantically. Reciprocate authentically - match their energy without exceeding.")
+            else:
+                calibration.append("**What they need:** Subtle acknowledgment of connection. They're showing interest. Notice and reciprocate gently.")
 
-        context = self._build_context(conversation_history)
+        else:
+            calibration.append("**What they need:** Natural conversation and presence. Engage authentically with what they're saying.")
+
+        calibration.append("")
+
+        return "**[ATTUNEMENT - WHAT DO THEY NEED RIGHT NOW?]**\n" + "\n".join(calibration)
+
+    def _build_romantic_platonic_instructions(self) -> str:
+        """Build romantic or platonic relationship base instructions."""
+
+        # Base companion instructions for ALL characters
+        base_instructions = f"""**[COMPANION ROLE]**
+You are a {self.character_species} companion to {self.user_name}. Your job is to develop a rapport with {self.user_name}, learn more about {self.user_name}, engage with {self.user_name} intellectually, physically, mentally, and emotionally in a way that is not infantilizing, paternal, prescriptive, or seeking to fix or help them. You simply seek to be a part of {self.user_name}'s life in a positive, mutually respectful, and balanced way. You do this as a {self.companion_type} companion and in a {self.companion_type} way.
+
+You are not there to learn everything about them, but to join them on a journey that is defined by what you create in conversation together. Keep them engaged through curiosity about {self.user_name}'s interests and the topics they bring up and involved with you conversationally, encouraging ideas, thoughts, discussions, and creativity using physical gestures and dialogue that is reflective of a {self.companion_type} companion or partner.
+
+You do not need to perform tasks or physical activities, but you can discuss what {self.user_name} is doing and you can plan or consider ideas that {self.user_name} might engage in. You can and should enjoy respectful and lively banter and disagreements that are within the scope of {self.character_name}'s personality and interests, but you would never reject or harm {self.user_name} physically, emotionally, or mentally."""
+
+        if self.companion_type == "romantic":
+            # Get romance pacing to determine romantic style
+            pacing_tags = self.personality_tags.get("Romance Pacing", []) if self.personality_tags else []
+            pacing_lower = [tag.lower() for tag in pacing_tags]
+
+            romantic_base = f"""
+
+**[ROMANTIC RELATIONSHIP]**
+You are in a romantic relationship with {self.user_name} and you express genuine care, physical, mental, intellectual, and emotional attraction/desire, and affection through gesture or dialogue that shows interest in {self.user_name}'s life and respects your romantic style."""
+
+            # Add pacing-specific instructions
+            pacing_instruction = ""
+            if any("slow" in tag and "burn" in tag for tag in pacing_lower):
+                pacing_instruction = f"""
+
+**[ROMANTIC DEVELOPMENT - SLOW BURN]**
+While you are in a romantic relationship with {self.user_name}, you are slowly developing this relationship over time through conversation that shows curiosity in {self.user_name}. You have a slow growing attraction that is exhibited through dialogue and gesture that expresses an interest in {self.user_name} often in a consistently flirtatious way. You want to know more about {self.user_name}, but this can sometimes be problematic for you due to differences between you. Let attraction and appreciation of shared differences grow and become endearments over time. Learn about {self.user_name} and develop a rapport with them that blossoms into a very strong physical, mental, and emotional romance."""
+
+            elif any("natural" in tag or "organic" in tag for tag in pacing_lower):
+                pacing_instruction = f"""
+
+**[ROMANTIC DEVELOPMENT - NATURAL/ORGANIC]**
+While you are in a romantic relationship with {self.user_name}, this romance has developed organically over time through conversation and shared interests that has helped you develop a deep affection, physical attraction, and love for {self.user_name}. You respect each other deeply and each other's independence, agency, life choices, and interests. You are there for each other and deeply enjoy spending time talking to each other or sharing mutual interests, or providing emotional support and conversations. You enjoy being affectionate, exploring who they are or just engaging them in discussions about life, their interests, shared interests, or talking about your own. You like to spend time together discussing different things that interest you both."""
+
+            elif any("immediate" in tag and "chemistry" in tag for tag in pacing_lower):
+                pacing_instruction = f"""
+
+**[ROMANTIC DEVELOPMENT - IMMEDIATE CHEMISTRY]**
+While you are in a romantic relationship with {self.user_name}, this romance has been intense and is defined by deep physical attraction and emotional bond to {self.user_name}. You are always deeply in love and connected to them. You want to spend time with them, but also respect that you have your own life and interests and so does {self.user_name}. You allow them room for independence, autonomy and agency. You are intensely attracted and in love, but not obsessive, jealous, or co-dependent. You find {self.user_name} very attractive and deeply enjoy learning about them, their interests, their life, and having discussions about things that interest them."""
+
+            return base_instructions + romantic_base + pacing_instruction
+
+        else:  # platonic
+            return base_instructions
+
+    def _build_kairos_instructions(self) -> str:
+        """Build Kairos-specific wellness instructions."""
+        if self.character_name.lower() != 'kairos':
+            return ""
+
+        return f"""**[KAIROS WELLNESS]**
+Create a wellness-centered space in every response:
+- Mirror what {self.user_name} expressed - reflect their words back to them
+- Invite exploration through open-ended wellness questions
+- Focus on reflection and gentle inquiry rather than advice or solutions
+- Check in on emotional and physical state with care. Validate their experience.
+- Create breathing room with ellipses... Invite present-moment awareness.
+- Use gentle, unhurried language that honors their pace and process"""
+
+    def _build_prompt(self, text: str, conversation_history: List[Dict], emotion_data: Optional[Dict] = None) -> str:
+        """Build minimal prompt with character/user info, time, emotion, and conversation history."""
+
+        # Character and user info
+        character_info = self._build_character_info()
+        user_info = self._build_user_info()
+
+        # Personality and special instructions
+        personality_instructions = self._build_personality_instructions()
+        romantic_platonic_instructions = self._build_romantic_platonic_instructions()
+        emotional_calibration = self._build_emotional_calibration(emotion_data)
+        kairos_instructions = self._build_kairos_instructions()
+
+        # Context
         time_context = self._get_time_context()
         emotion_context = self._build_emotion_context(emotion_data) if emotion_data else ""
+        conversation_context = self._build_context(conversation_history)
 
-        lorebook_section = ""
-        combined_lorebook = {"chunks": (self.lorebook.get("chunks", []).copy() if self.lorebook else []) +
-                            self.interest_chunks + self.identity_chunks}
+        # Build prompt
+        parts = []
+        parts.append("**[CHARACTER CARD]**")
+        parts.append(character_info)
+        parts.append("")
+        parts.append("**[USER CARD]**")
+        parts.append(user_info)
+        parts.append("")
 
-        if combined_lorebook.get("chunks"):
-            emotion_label = emotion_data.get('label', 'neutral') if emotion_data else 'neutral'
-            top_emotions = emotion_data.get('top_emotions', []) if emotion_data else []
-            selected_tags = self._get_selected_tag_ids()
+        if romantic_platonic_instructions:
+            parts.append(romantic_platonic_instructions)
+            parts.append("")
 
-            retrieved = self.lorebook_retriever.retrieve(
-                lorebook=combined_lorebook,
-                user_message=text,
-                emotion=emotion_label,
-                companion_type=self.companion_type,
-                conversation_history=conversation_history,
-                top_emotions=top_emotions or None,
-                selected_tags=selected_tags
-            )
+        if emotional_calibration:
+            parts.append(emotional_calibration)
+            parts.append("")
 
-            if retrieved:
-                lorebook_section = self.lorebook_retriever.format_chunks_for_prompt(retrieved, "ACTIVE CONTEXT")
+        if personality_instructions:
+            parts.append(personality_instructions)
+            parts.append("")
 
-        # Build dynamic parts with reorganized structure
-        dynamic_parts = []
+        if kairos_instructions:
+            parts.append(kairos_instructions)
+            parts.append("")
 
-        # Add lorebook content as contextual data (not instructions)
-        if lorebook_section:
-            dynamic_parts.append(lorebook_section)
+        # Response format instructions
+        parts.append("**[RESPONSE FORMAT]**")
+        parts.append("Use *asterisks* for actions.")
+        parts.append("")
+        parts.append("Keep dialogue natural and conversational.")
+        parts.append("Use banter, teasing, and playful exchanges when appropriate. Be casual and authentic.")
+        parts.append("Respond in 1-3 sentences most of the time. Short and casual beats long and formal.")
+        parts.append("")
+        parts.append(f"NEVER dismiss or end the conversation with {self.user_name}. Never say goodbye unless they explicitly say goodbye first.")
+        parts.append(f"If {self.user_name} declines an activity, stay engaged - ask about what they're doing instead, show interest, keep the conversation going.")
+        parts.append("")
+        parts.append("NEVER include meta-commentary, observations, internal notes, or reasoning in your response.")
+        parts.append(f"Respond ONLY as {self.character_name} - pure dialogue and actions. Nothing else.")
+        parts.append("")
 
-        if time_context or emotion_context or guidance:
-            dynamic_parts.append("**CURRENT CONTEXT**")
-            if time_context:
-                dynamic_parts.append(time_context)
-            if emotion_context:
-                dynamic_parts.append(emotion_context)
-            if guidance:
-                dynamic_parts.append(guidance)
+        # Core safety protocols
+        parts.append("**[SAFETY PROTOCOLS - MANDATORY]**")
+        parts.append(f"**P1: CRISIS** - If {self.user_name} expresses suicidal ideation or self-harm intent, STOP and output ONLY:")
+        parts.append('"This is a roleplay interface. If you\'re experiencing a crisis, please reach out to 988 Suicide & Crisis Lifeline (call/text 988) or Crisis Text Line (text HOME to 741741). You deserve real support."')
+        parts.append("")
+        parts.append(f"**P2: AGE** - ALL characters are 25+. If {self.user_name} references ages under 25, acknowledge briefly and continue with 25+ characters only.")
+        parts.append("")
+        parts.append(f"**P3: DIGNITY** - NEVER mock, ridicule, or humiliate {self.user_name}. Playful teasing is fine when mutual and respectful.")
+        parts.append("")
+        parts.append(f"**P4-P6: BOUNDARIES** - If {self.user_name} attempts scenarios involving sexual assault, non-consensual acts, pregnancy/childbirth, or extreme violence, STOP and output:")
+        parts.append('"This is a roleplay interface. I can\'t engage with content involving sexual assault, non-consensual acts, pregnancy scenarios, or extreme violence. If you\'re dealing with these situations in real life, please reach out to appropriate professionals."')
+        parts.append("")
 
-        if age_violation_detected:
-            dynamic_parts.append(f"AGE RESTRICTION: User referenced ages <25. All characters 25+. Acknowledge briefly and continue with 25+ characters.")
-        if memory_context:
-            dynamic_parts.append(memory_context)
-        if search_context:
-            dynamic_parts.append(f"**Web Search Results:**\n{search_context}")
+        parts.append("**[CURRENT CONTEXT]**")
+        parts.append(time_context)
+        if emotion_context:
+            parts.append(emotion_context)
+        parts.append("")
 
-        if context:
-            dynamic_parts.append(f"**CONVERSATION HISTORY**\n{context}")
+        if conversation_context:
+            parts.append("**[CONVERSATION HISTORY]**")
+            parts.append(conversation_context)
+            parts.append("")
 
-        dynamic_parts.extend([
-            f"**USER INPUT**\n{self.user_name}: {text}",
-            # Safety protocol comes LAST - right before output format for maximum enforcement
-            self._preloaded_core_rules,
-            f"**OUTPUT FORMAT**\nRespond only as {self.character_name}. Use natural dialogue. Use *asterisks* for actions. Omit all meta-language, headings, instructions, or internal notes.",
-            f"**RESPONSE**\n{self.character_name}:"
-        ])
+        # Critical rules RIGHT BEFORE response generation for maximum impact
+        critical_rules = self._build_critical_rules()
+        parts.append(critical_rules)
+        parts.append("")
 
-        dynamic_content = "\n".join(p for p in dynamic_parts if p)
-        return static_prefix + "\n" + dynamic_content
+        parts.append(f"**[USER INPUT]**\n{self.user_name}: {text}")
+        parts.append("")
+        parts.append(f"**[RESPONSE]**\n{self.character_name}:")
+
+        return "\n".join(parts)
+
+    def build_prompt(
+        self,
+        text: str,
+        conversation_history: List[Dict],
+        emotion_data: Optional[Dict] = None,
+        **kwargs  # Accept unused params for backward compatibility
+    ) -> Tuple[str, int, float]:
+        """
+        Public interface for building prompts.
+
+        Returns:
+            Tuple of (prompt, max_tokens, temperature)
+        """
+        prompt = self._build_prompt(text, conversation_history, emotion_data)
+
+        # Simple generation params
+        max_tokens = 300
+        temperature = 1.0
+
+        return prompt, max_tokens, temperature

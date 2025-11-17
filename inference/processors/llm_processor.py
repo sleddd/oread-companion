@@ -349,24 +349,15 @@ class LLMProcessor:
 
             search_context = await self.context_manager.fetch_web_context(text, is_starter=is_starter)
 
-            # 2. Get generation parameters based on content
-            guidance, max_tokens, temperature = prompt_builder._get_generation_params(
+            # 2. Build the complete prompt and get generation parameters
+            prompt, max_tokens, temperature = prompt_builder.build_prompt(
                 text=text,
-                emotion=emotion,
-                conversation_history=conversation_history,
-                emotion_data=emotion_data
-            )
-
-            # 3. Build the complete prompt
-            prompt = prompt_builder._build_prompt(
-                text=text,
-                guidance=guidance,
                 emotion=emotion,
                 conversation_history=conversation_history,
                 search_context=search_context,
                 emotion_data=emotion_data,
-                age_violation_detected=is_age_violation,
-                memory_context=memory_context
+                memory_context=memory_context,
+                age_violation_detected=is_age_violation
             )
 
             logger.info(f"TOTAL PROMPT SIZE: {len(prompt)} chars (~{len(prompt)//4} tokens)")
@@ -582,13 +573,15 @@ class LLMProcessor:
                     api_key=web_search_api_key
                 )
 
-            # 3. Get generation parameters
+            # 3. Build the complete prompt and get generation parameters
             emotion = emotion_data.get('emotion', 'neutral') if emotion_data else 'neutral'
-            guidance, max_tokens, temperature = prompt_builder._get_generation_params(
+            prompt, max_tokens, temperature = prompt_builder.build_prompt(
                 text=text,
                 emotion=emotion,
                 conversation_history=conversation_history,
-                emotion_data=emotion_data
+                search_context=search_context,  # Use provided search context
+                emotion_data=emotion_data,
+                memory_context=memory_context
             )
 
             # Apply overrides if provided
@@ -596,17 +589,6 @@ class LLMProcessor:
                 max_tokens = max_tokens_override
             if temperature_override is not None:
                 temperature = temperature_override
-
-            # 4. Build the complete prompt
-            prompt = prompt_builder._build_prompt(
-                text=text,
-                guidance=guidance,
-                emotion=emotion,
-                conversation_history=conversation_history,
-                search_context=search_context,  # Use provided search context
-                emotion_data=emotion_data,
-                memory_context=memory_context
-            )
 
             # Calculate approximate token count (chars / 4 is rough estimate)
             approx_tokens = len(prompt) // 4
@@ -669,16 +651,8 @@ class LLMProcessor:
             # Build a minimal prompt for starter
             starter_text = f"[System: Generate a brief, natural conversation starter from {char_name}. Keep it under 2 sentences, engaging and in-character.]"
 
-            guidance, max_tokens, temperature = prompt_builder._get_generation_params(
+            prompt, max_tokens, temperature = prompt_builder.build_prompt(
                 text=starter_text,
-                emotion='neutral',
-                conversation_history=[],
-                emotion_data=None
-            )
-
-            prompt = prompt_builder._build_prompt(
-                text=starter_text,
-                guidance=guidance,
                 emotion='neutral',
                 conversation_history=[],
                 search_context=None,

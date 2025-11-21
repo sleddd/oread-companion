@@ -69,6 +69,114 @@ class ResponseCleaner:
         re.IGNORECASE
     )
 
+    # Remove standalone "Explanation:" blocks (parenthesized explanations at end of responses)
+    # Catches patterns like "(Explanation: - item 1 - item 2 - item 3)"
+    EXPLANATION_BLOCK_PATTERN = re.compile(
+        r'\(Explanation:\s*(?:[-•]\s*[^\n)]+\s*)*\)',
+        re.IGNORECASE
+    )
+
+    # Remove meta-commentary bullet lists that appear after **** or *** marker
+    # Catches patterns like:
+    # ****
+    # - Used character's tone
+    # - Acknowledged the action
+    # - Validated emotional state
+    META_BULLET_LIST_PATTERN = re.compile(
+        r'\*{3,}\s*(?:\n\s*[-•]\s*[^\n]+)+',
+        re.IGNORECASE | re.MULTILINE
+    )
+
+    # Remove meta-commentary introduced by asterisk-wrapped phrases
+    # Catches patterns like:
+    # ***( Your response demonstrates:
+    # - bullet point 1
+    # - bullet point 2
+    ASTERISK_META_INTRO_PATTERN = re.compile(
+        r'\*{2,}\s*\(\s*(?:Your response|This response|The response)\s+(?:demonstrates|shows|includes|contains)[^)]*\)?\s*:?\s*(?:\n\s*[-•]\s*[^\n]+)*',
+        re.IGNORECASE | re.MULTILINE
+    )
+
+    # Remove standalone meta-commentary bullet lists (without **** marker)
+    # Catches bullet lists with meta-reasoning about tone, validation, etc.
+    STANDALONE_META_BULLETS_PATTERN = re.compile(
+        r'(?:\n\s*[-•]\s*(?:Used|Acknowledged|Validated|Expressed|Kept|Maintained|Prioritized|Avoided|Initiates|Mirrors|Demonstrates|Shows|Reflects)[^\n]+){1,}',
+        re.IGNORECASE | re.MULTILINE
+    )
+
+    # Remove meta-analytical text about the response/output
+    # Catches phrases like:
+    # "You have successfully processed the input..."
+    # "The output demonstrates..."
+    # "This demonstrates..."
+    # Also catches trailing sentences starting with these patterns
+    # AGGRESSIVE: Removes entire rest of text after these markers appear
+    META_ANALYSIS_TEXT_PATTERN = re.compile(
+        r'(?:'
+        r'(?:\.\s+|\n\s*)(?:You have successfully|The output|This output|The response|This response)\s+(?:processed|demonstrates?|shows?|reflects?|maintains?|encourages?).*$'
+        r'|'
+        r'(?:\.\s+|\n\s*)This\s+(?:processed|demonstrates?|shows?|reflects?|maintains?|encourages?).*$'
+        r')',
+        re.IGNORECASE | re.MULTILINE | re.DOTALL
+    )
+
+    # Remove "based on [character]'s current [emotion] mood" meta-commentary
+    # Catches: "based on Atlas's current joyful mood"
+    MOOD_BASED_COMMENTARY_PATTERN = re.compile(
+        r'(?:\s+based on\s+\w+\'s\s+current\s+\w+\s+mood\.?)',
+        re.IGNORECASE
+    )
+
+    # Remove empty parentheses artifacts left behind after cleaning
+    # Catches: "( )", "()", "( ) ( )", etc.
+    EMPTY_PARENTHESES_PATTERN = re.compile(
+        r'\(\s*\)',
+        re.IGNORECASE
+    )
+
+    # Remove complex numbered meta-commentary blocks with labeled sections
+    # Catches patterns like:
+    # ***( 1. )(Acknowledged Negative Content:)( N/A... 2. )(Emotion Validation:)( ... )***
+    # (1.) Acknowledged Negative Content: N/A (no struggle/negativity detected) 2.) Emotion Validation: )
+    # This is a structured meta-analysis format
+    NUMBERED_META_BLOCKS_PATTERN = re.compile(
+        r'(?:'
+        r'\*{2,}\s*\(\s*\d+\.?\s*\)[^*]*\*{2,}'  # Asterisk-wrapped version
+        r'|'
+        r'\(\s*\d+\.?\s*\)\s*(?:Acknowledged|Emotion|Response|Output|Action)\s+(?:Negative\s+)?(?:Content|Validation|Analysis|Context)[^)]*\)'  # Standalone numbered sections
+        r'|'
+        r'(?:\.\s+|\n\s*)\d+\.?\s*\)\s*(?:Acknowledged|Emotion|Response|Output|Action)\s+(?:Negative\s+)?(?:Content|Validation|Analysis|Context):[^\)]*(?:\)|$)'  # Numbered with labels
+        r')',
+        re.IGNORECASE | re.MULTILINE | re.DOTALL
+    )
+
+    # Remove labeled meta-commentary sections in parentheses
+    # Catches: "(Acknowledged Negative Content:)", "(Emotion Validation:)", etc.
+    LABELED_META_SECTIONS_PATTERN = re.compile(
+        r'\([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s*(?:Content|Validation|Analysis|Context|Response|Output):\s*\)',
+        re.IGNORECASE
+    )
+
+    # Remove entire trailing meta-commentary that starts with "(1.)" or "1.)"
+    # This aggressively removes everything from the first numbered section onwards
+    AGGRESSIVE_NUMBERED_META_PATTERN = re.compile(
+        r'(?:\s*\(\s*\d+\.?\s*\)|(?:\.\s+|\s+)\d+\.?\s*\))\s*(?:Acknowledged|Emotion|Response|Output|Action).*$',
+        re.IGNORECASE | re.MULTILINE | re.DOTALL
+    )
+
+    # Remove "Output is appropriate based on..." meta-commentary
+    OUTPUT_APPROPRIATE_PATTERN = re.compile(
+        r'Output is appropriate based on[^.!?]*[.!?]',
+        re.IGNORECASE
+    )
+
+    # Remove trailing meta-commentary sentences that start with bullet points
+    # Catches: "- Initiates a physical romantic gesture..."
+    TRAILING_BULLET_COMMENTARY_PATTERN = re.compile(
+        r'(?:\.\s+|\n\s*)[-•]\s+(?:Initiates?|Uses?|Maintains?|Mirrors?|Demonstrates?|Shows?|Reflects?|Acknowledges?|Validates?|Expresses?|Keeps?|Prioritizes?|Avoids?)[^.!?]*(?:[.!?]|$)',
+        re.IGNORECASE | re.MULTILINE
+    )
+
     # Remove meta-reasoning text that describes model decisions
     # Catches phrases like "I've chosen to", "My action has prioritized", "I'm choosing to"
     # This handles cases where the reasoning appears in regular parentheses
@@ -425,8 +533,19 @@ class ResponseCleaner:
         if not hasattr(self, '_combined_meta_pattern'):
             # Cache combined pattern on first use
             meta_patterns = [
+                self.AGGRESSIVE_NUMBERED_META_PATTERN.pattern,
+                self.NUMBERED_META_BLOCKS_PATTERN.pattern,
                 self.INTERNAL_REASONING_PATTERN.pattern,
                 self.NOTE_COMMENTARY_PATTERN.pattern,
+                self.EXPLANATION_BLOCK_PATTERN.pattern,
+                self.META_BULLET_LIST_PATTERN.pattern,
+                self.ASTERISK_META_INTRO_PATTERN.pattern,
+                self.TRAILING_BULLET_COMMENTARY_PATTERN.pattern,
+                self.META_ANALYSIS_TEXT_PATTERN.pattern,
+                self.MOOD_BASED_COMMENTARY_PATTERN.pattern,
+                self.OUTPUT_APPROPRIATE_PATTERN.pattern,
+                self.LABELED_META_SECTIONS_PATTERN.pattern,
+                self.STANDALONE_META_BULLETS_PATTERN.pattern,
                 self.META_REASONING_PATTERN.pattern,
                 self.META_PARENTHETICAL_PATTERN.pattern,
                 self.META_ANALYSIS_PATTERN.pattern,
@@ -436,9 +555,30 @@ class ResponseCleaner:
                 self.EMOTION_METADATA_PATTERN.pattern,
                 self.DEBUG_MARKUP_PATTERN.pattern
             ]
-            self._combined_meta_pattern = re.compile('|'.join(f'(?:{p})' for p in meta_patterns), re.IGNORECASE)
+            self._combined_meta_pattern = re.compile('|'.join(f'(?:{p})' for p in meta_patterns), re.IGNORECASE | re.MULTILINE | re.DOTALL)
 
         text = self._combined_meta_pattern.sub('', text)
+
+        # Additional aggressive cleanup passes for stubborn meta-commentary
+        # Run multiple passes to catch nested and evolving patterns
+
+        # Pass 1: Remove any remaining asterisk-wrapped content with "Acknowledged" or "Emotion"
+        text = re.sub(r'\*+\s*\([^)]*(?:Acknowledged|Emotion|Validation|Response|Output)[^)]*\).*?\*+', '', text, flags=re.IGNORECASE | re.DOTALL)
+
+        # Pass 2: Remove standalone "(Acknowledged..." or "2." patterns anywhere
+        text = re.sub(r'\(\s*\(?(?:Acknowledged|Emotion|Response|Output|Action)[^)]*(?:\d+\.|[,)])[^)]*', '', text, flags=re.IGNORECASE | re.DOTALL)
+
+        # Pass 3: Remove any text that starts with "N/A," followed by meta-keywords
+        text = re.sub(r'\bN/A,?\s+(?:No|no)\s+(?:struggle|negativity)[^.!?]*', '', text, flags=re.IGNORECASE)
+
+        # Pass 4: Remove trailing numbered items like "2." at the end
+        text = re.sub(r'\s+\d+\.\s*$', '', text)
+
+        # Clean up empty parentheses left behind after meta-commentary removal
+        text = self.EMPTY_PARENTHESES_PATTERN.sub('', text)
+
+        # Clean up multiple consecutive spaces
+        text = re.sub(r'\s{2,}', ' ', text)
 
         # OPTIMIZED: Combine punctuation fixes into one pass
         if not hasattr(self, '_combined_punctuation_pattern'):
@@ -530,6 +670,7 @@ class ResponseCleaner:
             "### End of Conversation", "###",
             "*(END CURRENT CONTEXT)*", "(END CURRENT CONTEXT)",
             "((END RESPONSE))", "(END RESPONSE)", "**END RESPONSE**", "*(END RESPONSE)*",
+            "((END OF ASSISTANT RESPONSE))", "(END OF ASSISTANT RESPONSE)", "**END OF ASSISTANT RESPONSE**", "*(END OF ASSISTANT RESPONSE)*",
             "((END OF TRANSCRIPT))", "(END OF TRANSCRIPT)", "**END OF TRANSCRIPT**", "*(END OF TRANSCRIPT)*",
             "((END TURN))", "(END TURN)", "**END TURN**", "*(END TURN)*",
             "((END OF TURN))", "(END OF TURN)", "**END OF TURN**", "*(END OF TURN)*",

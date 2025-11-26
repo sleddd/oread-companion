@@ -100,73 +100,7 @@ Give your AI a bit of personality. The idea is to provide a model agnostic inter
 
 > For the full philosophy behind these protections, see [Philosophy: Shared Responsibility](#philosophy-shared-responsibility) above and [SECURITY_ETHICS_SAFETY.md](SECURITY_ETHICS_SAFETY.md).
 
-### Built-In Safety Features
-
-Oread has **non-removable safety protections** built into the prompts:
-
-- ✅ Age verification (18+ only)
-- ✅ Consent-required interactions
-- ✅ Anti-violence filters
-- ✅ Crisis intervention detection
-- ✅ Automatic age adjustments in roleplay
-
-**Why?** Because irresponsible AIs hurt people, and we're not about that. These protections help you use AI responsibly—they don't control you.
-
-**Can they be removed?** Technically, yes. But doing so violates the license and defeats the purpose of responsible AI development.
-
----
-
-## Philosophy: Shared Responsibility
-
-**Why does Oread have safety protections in open-source software?**
-
-We build firewalls to prevent XSS attacks. We hash passwords to prevent theft. We validate inputs to prevent injection. These are standard security practices—so why not include protections for mental welfare too?
-
-Can they be removed? Sure, just like any security feature. But responsible development means including protections by default, even if they can be bypassed.
-
-**We're in a new era of shared responsibility.** AI changes where responsibility lies—it's no longer just on developers or just on users. It's on both.
-
-**The developer's responsibility:**
-- Build thoughtful safeguards into the code
-- Provide clear documentation and warnings
-- Design with ethics in mind
-- Help users understand the technology
-
-**The user's responsibility:**
-- Use the technology ethically
-- Understand the risks and limitations
-- Make responsible choices
-- Own the consequences of their actions
-
-**What this means:** We shouldn't prevent people from developing or using AI software just because someone *might* misuse it. That's like banning kitchen knives because they *could* be used as weapons. The solution isn't to lock everything down—it's to build responsibly and expect users to act responsibly.
-
-**Developers aren't, and shouldn't be, responsible for policing users' morality or ethics.** We're not your parents, your therapist, or your conscience. We provide tools with reasonable safeguards. What you do with those tools is on you.
-
-**Oread was built with this philosophy in mind.** It provides guardrails and prompts awareness, but ultimately respects your autonomy. The protections are there to help you make responsible choices, not to make those choices for you.
-
-**Is it perfect?** No. AI is unpredictable, and these protections can't catch everything. But imperfect safeguards are better than none at all.
-
-**The rest is up to you.** We've built the guardrails. We've documented the risks. We've made our ethical stance clear. But ultimately, you're responsible for how you use this software. We're not going to police your morality—that's your job. Use Oread wisely, ethically, and with awareness of its impact.
-
----
-
-### What You Need to Know
-
-**AI is not human.** It's pattern-matching text prediction. Treat it like:
-- ✅ A creative writing partner
-- ✅ An entertaining chatbot
-- ✅ A brainstorming tool
-
-**Never use AI for:**
-- ❌ Medical advice
-- ❌ Mental health crises (Call 988 if you need help)
-- ❌ Financial decisions
-- ❌ Legal guidance
-- ❌ Replacing actual human relationships
-
-**AI hallucinates.** It will confidently tell you wrong information. Don't trust it for facts.
-
----
+--_
 
 ## Quick Start
 

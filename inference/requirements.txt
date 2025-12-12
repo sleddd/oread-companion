@@ -24,5 +24,6 @@ mcp>=1.1.2
 aiofiles>=24.1.0
 aiosqlite>=0.20.0  # Keep for migration script, can remove after
 
-# Vector Memory - keyword-based conversation recall (no sentence-transformers needed)
+# Vector Memory - semantic conversation recall with normalized embeddings
 chromadb>=0.4.22
+sentence-transformers>=2.2.0

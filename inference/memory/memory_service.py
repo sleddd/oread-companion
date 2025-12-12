@@ -1,10 +1,10 @@
 """
 Vector Memory Service
 
-Local memory for conversation recall using ChromaDB with keyword-based search.
+Local memory for conversation recall using ChromaDB with semantic vector search.
 100% private, GDPR-compliant, fully deletable.
 
-This replaces the MCP memory server with keyword-based search (no embedding models needed).
+Uses sentence-transformers for L2-normalized embeddings with cosine similarity.
 """
 import chromadb
 from chromadb.config import Settings
@@ -14,7 +14,8 @@ from typing import List, Dict, Optional
 import logging
 from pathlib import Path
 import gc  # For explicit garbage collection
-import re
+import os
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +26,15 @@ class MemoryService:
 
     Features:
     - 100% local storage (no cloud)
-    - Semantic search (finds related conversations, not just keywords)
+    - Semantic search with L2-normalized embeddings (cosine similarity)
     - Per-character memory isolation
     - GDPR-compliant deletion (hard delete)
     - Metadata filtering (by date, emotion, speaker, etc.)
     """
+
+    # Embedding model configuration
+    EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"  # ~90MB, fast, good quality
+    EMBEDDING_DIMENSION = 384  # Output dimension of all-MiniLM-L6-v2
 
     def __init__(self, persist_directory: str = "./data/memory"):
         """
@@ -40,6 +45,11 @@ class MemoryService:
         """
         self.persist_directory = Path(persist_directory)
         self.persist_directory.mkdir(parents=True, exist_ok=True)
+
+        # Set up models directory for sentence-transformers cache
+        self.models_directory = Path(__file__).resolve().parent.parent.parent / "models" / "embeddings"
+        self.models_directory.mkdir(parents=True, exist_ok=True)
+        os.environ['SENTENCE_TRANSFORMERS_HOME'] = str(self.models_directory)
 
         self.client = None
         self.embedding_model = None
@@ -52,13 +62,13 @@ class MemoryService:
         logger.info("MemoryService created (not yet initialized)")
 
     async def initialize(self):
-        """Async initialization of ChromaDB (no embedding model needed)."""
+        """Async initialization of ChromaDB and sentence-transformers embedding model."""
         if self.initialized:
             logger.info("MemoryService already initialized")
             return
 
         try:
-            logger.info("Initializing Memory Service (keyword-based search)...")
+            logger.info("Initializing Memory Service (semantic vector search)...")
 
             # Initialize ChromaDB with persistent storage (LOCAL ONLY - NO NETWORK EXPOSURE)
             logger.info("Initializing ChromaDB with persistent storage...")
@@ -72,12 +82,17 @@ class MemoryService:
                 )
             )
 
-            # No embedding model needed - using keyword-based search
-            logger.info("Using keyword-based search (no embedding model required)")
+            # Load sentence-transformers embedding model
+            logger.info(f"Loading embedding model: {self.EMBEDDING_MODEL_NAME}...")
+            logger.info(f"   Model cache directory: {self.models_directory}")
+
+            from sentence_transformers import SentenceTransformer
+            self.embedding_model = SentenceTransformer(self.EMBEDDING_MODEL_NAME)
+            logger.info(f"✅ Embedding model loaded successfully")
 
             self.initialized = True
             logger.info("✅ Memory Service initialized successfully")
-            logger.info("   - Search method: Keyword-based (fast, no model downloads)")
+            logger.info("   - Search method: Semantic vector search (L2 normalized, cosine similarity)")
             logger.info("   - Storage: Persistent local storage")
             logger.info("   - Telemetry: DISABLED (privacy-first)")
 
@@ -85,6 +100,40 @@ class MemoryService:
             logger.error(f"❌ Failed to initialize Memory Service: {e}", exc_info=True)
             self.initialized = False
             raise
+
+    def _get_embedding(self, text: str) -> List[float]:
+        """
+        Get L2-normalized embedding for text.
+
+        Args:
+            text: Text to embed
+
+        Returns:
+            Normalized embedding vector (unit length)
+        """
+        # Check cache first
+        cache_key = hash(text)
+        if cache_key in self.embedding_cache:
+            return self.embedding_cache[cache_key]
+
+        # Generate embedding
+        embedding = self.embedding_model.encode(text, convert_to_numpy=True)
+
+        # L2 normalize to unit vector (for cosine similarity)
+        norm = np.linalg.norm(embedding)
+        if norm > 0:
+            embedding = embedding / norm
+
+        # Convert to list for ChromaDB
+        embedding_list = embedding.tolist()
+
+        # Cache the result (with size limit)
+        if len(self.embedding_cache) >= self.cache_max_size:
+            # Remove oldest entry (simple FIFO)
+            self.embedding_cache.pop(next(iter(self.embedding_cache)))
+        self.embedding_cache[cache_key] = embedding_list
+
+        return embedding_list
 
     def _get_collection_name(self, character: str) -> str:
         """
@@ -145,7 +194,7 @@ class MemoryService:
         metadata: Optional[Dict] = None
     ) -> Optional[str]:
         """
-        Store a message with semantic embedding.
+        Store a message with L2-normalized semantic embedding.
 
         Args:
             message: The text content to store
@@ -167,14 +216,17 @@ class MemoryService:
             return None
 
         try:
-            # No embedding needed for keyword-based search
-            # Store the message text directly for keyword matching
+            # Generate L2-normalized embedding for semantic search
+            embedding = self._get_embedding(message)
 
-            # Get or create collection for this character
+            # Get or create collection for this character (with cosine distance for normalized vectors)
             collection_name = self._get_collection_name(character)
             collection = self.client.get_or_create_collection(
                 name=collection_name,
-                metadata={"character": character}
+                metadata={
+                    "character": character,
+                    "hnsw:space": "cosine"  # Cosine similarity for normalized vectors
+                }
             )
 
             # Generate unique ID
@@ -195,14 +247,15 @@ class MemoryService:
             if metadata:
                 msg_metadata.update(metadata)
 
-            # Store in ChromaDB (no embeddings, just documents for keyword search)
+            # Store in ChromaDB with normalized embedding
             collection.add(
                 ids=[msg_id],
                 documents=[message],
+                embeddings=[embedding],
                 metadatas=[msg_metadata]
             )
 
-            logger.debug(f"Stored message {msg_id}")
+            logger.debug(f"Stored message {msg_id} with embedding")
             return msg_id
 
         except Exception as e:
@@ -217,16 +270,16 @@ class MemoryService:
         filter_metadata: Optional[Dict] = None
     ) -> List[Dict]:
         """
-        Search for keyword matches in messages (no embeddings needed).
+        Search for semantically similar messages using L2-normalized embeddings.
 
         Args:
-            query: Search query (keywords to match)
+            query: Search query (semantic meaning is matched, not just keywords)
             character: Which character's memories to search
             n_results: How many results to return (default: 5)
             filter_metadata: Optional metadata filters (e.g., {"emotion": "happy"})
 
         Returns:
-            List of matching messages
+            List of matching messages sorted by similarity
         """
         if not self.initialized:
             logger.warning("MemoryService not initialized, cannot search")
@@ -236,7 +289,10 @@ class MemoryService:
             return []
 
         try:
-            logger.debug(f"Starting keyword search for query: '{query[:50]}...'")
+            logger.debug(f"Starting semantic search for query: '{query[:50]}...'")
+
+            # Generate normalized embedding for query
+            query_embedding = self._get_embedding(query)
 
             # Get character's collection
             collection_name = self._get_collection_name(character)
@@ -249,11 +305,10 @@ class MemoryService:
                 logger.info(f"No memories found for {character}")
                 return []
 
-            # Use ChromaDB's built-in text search (no embeddings)
-            # This does simple keyword/substring matching
-            logger.debug("Querying collection with keyword search...")
+            # Query with normalized embedding (cosine similarity)
+            logger.debug("Querying collection with semantic embedding...")
             results = collection.query(
-                query_texts=[query],
+                query_embeddings=[query_embedding],
                 n_results=n_results,
                 where=filter_metadata  # e.g., {"speaker": "User"}
             )
@@ -263,10 +318,16 @@ class MemoryService:
             formatted = []
             if results['ids'] and results['ids'][0]:
                 for i in range(len(results['ids'][0])):
+                    # Cosine distance to similarity: similarity = 1 - distance
+                    # For normalized vectors, cosine similarity ranges from -1 to 1
+                    # Distance ranges from 0 to 2, so similarity = 1 - (distance/2) gives 0 to 1
+                    distance = results['distances'][0][i]
+                    similarity = 1 - (distance / 2)  # Normalize to 0-1 range
+
                     formatted.append({
                         "id": results['ids'][0][i],
                         "message": results['documents'][0][i],
-                        "similarity": 1 - results['distances'][0][i],  # Convert distance to similarity
+                        "similarity": similarity,
                         "metadata": results['metadatas'][0][i]
                     })
 

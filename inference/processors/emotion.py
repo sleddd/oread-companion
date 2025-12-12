@@ -5,8 +5,15 @@ from transformers import AutoTokenizer, pipeline
 import logging
 from typing import Dict, Any, Optional, List
 from pathlib import Path
+import os
 
 logger = logging.getLogger(__name__)
+
+# Set HuggingFace cache to project's models folder (before any model loading)
+_models_dir = Path(__file__).resolve().parent.parent.parent / "models" / "huggingface"
+_models_dir.mkdir(parents=True, exist_ok=True)
+os.environ['HF_HOME'] = str(_models_dir)
+os.environ['TRANSFORMERS_CACHE'] = str(_models_dir)
 
 class EmotionDetector:
     """Handles emotion detection from text."""
@@ -49,6 +56,7 @@ class EmotionDetector:
                 logger.info("✅ Quantized emotion classifier loaded successfully")
             else:
                 logger.warning("Quantized model not found, falling back to online model")
+                logger.info(f"   Downloading to: {_models_dir}")
                 self.classifier = pipeline(
                     "text-classification",
                     model="SamLowe/roberta-base-go_emotions",

@@ -110,6 +110,17 @@ Give your AI a bit of personality. The idea is to provide a model agnostic inter
 - **OS:** macOS, Linux, or Windows (WSL recommended)
 - **Optional:** GPU (runs faster with Apple Silicon, NVIDIA, or AMD)
 
+### Auto-Downloaded Models
+
+On first startup, Oread automatically downloads two small AI models to the `models/` folder:
+
+| Model | Size | Purpose | Location |
+|-------|------|---------|----------|
+| `all-MiniLM-L6-v2` | ~90MB | Semantic memory search (finds related conversations) | `models/embeddings/` |
+| `roberta-base-go_emotions` | ~500MB | Emotion detection (understands how you're feeling) | `models/huggingface/` |
+
+These download once and are cached locally. Both run entirely on your machine - no cloud, no API calls.
+
 ### Getting Started
 
 1. **Install** - Follow the [INSTALLATION.md](INSTALLATION.md) guide

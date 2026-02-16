@@ -4,38 +4,6 @@ This document explains Oread's security architecture, ethical guidelines, and sa
 
 ---
 
-## A Note on Safety Protections
-
-**Why does Oread have safety guardrails?**
-
-We build firewalls into our code to prevent XSS attacks. We hash passwords to prevent theft. We validate inputs to prevent injection attacks. These are standard security practices—we protect users from technical threats.
-
-**So why not protect users' mental welfare too?**
-
-The safety protections in Oread aren't about censorship or corporate control. They're about applying the same principle we use for technical security: **reasonable protections built into the code itself.**
-
-Yes, determined bad actors can modify anything—just like they can remove firewalls or disable password hashing. We can't stop that. But that doesn't mean we should ship software without any protections at all.
-
-**The bigger picture:**
-
-AI companions shouldn't be the sole domain of private businesses or corporations. We should be able to code and develop our own. But personal freedom doesn't mean abandoning responsibility. Oread's protections are written into the prompts because **ethical AI development means considering the humans on the other side of the screen.** 
-
-That's really it. These aren't draconian restrictions—they're thoughtful guardrails, like input validation or HTTPS. 
-
-Can they be removed? Sure, just like any security feature. But responsible development means including protections by default, even if they can be bypassed. 
-
-**We're in a new era of shared responsibility.** AI changes where responsibility lies—it's no longer just on developers or just on users. It's on both.
-
-As developers, our job is to help users safeguard themselves, not to do it for them. As users, the responsibility is to become aware of the impact of AI interactions—the emotional weight of conversations, the patterns they create, the boundaries they require—and take ownership of that experience.
-
-**Oread was built with this philosophy in mind.** It provides guardrails and prompts awareness, but ultimately respects your autonomy. The protections are there to help you make responsible choices, not to make those choices for you.
-
-**Is it perfect?** No. AI is unpredictable, and these protections can't catch everything. But imperfect safeguards are better than none at all.
-
-**The rest is up to you.** That's why you need to be responsible, aware, and own your use of AI.
-
----
-
 ## Table of Contents
 - [Security Architecture](#security-architecture)
 - [Safety Protections](#safety-protections)

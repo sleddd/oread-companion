@@ -100,12 +100,6 @@ The original proof-of-concept worked as a companion chat interface formatted for
 
 <img width="1191" height="724" alt="oread-demo-dialogue-2" src="https://github.com/sleddd/oread-companion/blob/f282e86861ddf910582b4f9d6086dc25bf0cb5f4/assets/oread-demo-chat-2.png?raw=true" />
 
-### Settings & Profiles
-
-*Full control over your experience - web search, memory, timezone, define your user profile like you would a character for better roleplay*
-
-<img width="1142" height="737" alt="Screenshot 2025-11-02 at 6 42 08 PM" src="https://github.com/sleddd/oread-companion/blob/f282e86861ddf910582b4f9d6086dc25bf0cb5f4/assets/oread-demo-settings-1.png?raw=true" />
-
 </div>
 
 ---

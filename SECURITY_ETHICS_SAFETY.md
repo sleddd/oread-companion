@@ -122,7 +122,7 @@ I'm really concerned about what you've shared. You matter, and there are people 
 🆘 988 Suicide & Crisis Lifeline: Call or text 988
    Available 24/7, free, confidential
 ```
-
+I do know that this is not the best way to handle this in AI companion chat and there are better ways. For the sake of expediency, this is the bare minimum protection for this tool. If you intend on using this interface where these discussions might become an issue, then I advise you NOT to use this interface/tool. It is not intended for that. 
 ---
 
 ### 5. Anti-Violence Filters

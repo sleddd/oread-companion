@@ -1,34 +1,78 @@
-# Oread - Your Privacy-First, AI Interface ( MVP - Proof of Concept - in rebuild ) 
+# Oread — A Personal AI Interface Project
 
-** This app is still in development **
-
-<div align="center">
-
-**Self-hosted AI interface that actually respects your privacy**
-
-[![License: Non-Commercial](https://img.shields.io/badge/License-Non--Commercial-blue.svg)](LICENSE)
-[![Privacy: Local Only](https://img.shields.io/badge/Privacy-Local%20Only-green.svg)]()
-[![Status: Pre-Release](https://img.shields.io/badge/Status-Pre--Release-orange.svg)]()
-
-[Features](#features) • [Installation](INSTALLATION.md) • [Screenshots](#screenshots) • [FAQ](FAQ.md)
-
-</div>
+**A privacy-first, model-agnostic AI interface. Built for learning. Currently in active rebuild.**
 
 ---
 
-## What is Oread?
+## What Is Oread?
 
-Named after the Oreads (Ὀρειάδες) of Greek mythology—mountain nymphs who were loyal companions to the gods—**Oread** brings that same companionship to your computer, minus the mythology and corporate data mining.
+Oread is a self-hosted AI interface that runs entirely on your machine — no cloud, no tracking, no third-party data collection. Named after the Oreads (Ὀρειάδες) of Greek mythology, mountain nymphs who were loyal companions to the gods, the project started as a way to explore AI companion apps locally, with full privacy, outside the control of any business or platform.
 
-It's a **self-hosted AI interface** that runs entirely on your machine. No cloud. No tracking. No sketchy terms of service. Just you, your computer, and an AI friend that stays between you two.
+It has since grown into something broader: a personal research platform where I'm developing and testing my own ideas about AI memory, user-defined interaction profiles, and how we shape the tone and purpose of our conversations with language models.
 
-> **⚠️ Pre-Release Software** - Works well, but expect bugs and ongoing improvements. Think "beta testing" phase.
+**You bring the model. Oread provides the interface.**
 
-### The Core Idea
+---
 
-Give your AI a bit of personality. The idea is to provide a model agnostic interface that allows you to give your LLM a personality, so that you can use it for anything from chat, research and discussion to roleplay with complete privacy. All conversations stay on your machine. Currently, it is formatted to work best with roleplay LLMs, but there will be changes in the future to ensure it is more widely supported.
+## Why This Exists
 
-**You bring the model** (like downloading an app), **Oread provides the interface** (think of it as the operating system for your AI assistant/companion).
+Oread began because I wanted a companion-style AI conversation app — something like Nomi — that I could run locally and own completely. It was also the first time I used AI to build software: I provided the ideas and architecture, and let AI handle the routine coding. Everything about this project has been a learning process from the ground up.
+
+### What I've Learned Building This
+
+- How to use and implement local AI models and tooling
+- How to develop and fine-tune AI models
+- How to build custom sentiment analysis tools
+- How AI context windows and chat memory actually work
+- How to integrate services like web search into a local interface
+- The practical quirks of working with LLMs and NLP day-to-day
+
+---
+
+## Where It's Going
+
+Oread is evolving from a companion chat interface into a two-pronged rebuild:
+
+### 1. A Memory Theory Testbed
+
+I'm building and proving my own theory of AI memory, informed by ideas I explore in [What Gertrude Stein Taught Me About AI](https://github.com/4tlasX/writing-and-theory/blob/main/what-gertrude-stein-taught-me-about-ai). The short version: current approaches to AI memory are insufficient, and I believe there are better models for how context, recall, and conversational continuity should work. Oread is where I test that.
+
+### 2. A Profile-Based Assistive Interface
+
+The goal is for Oread to become an interface where users are defined as profiles — not just usernames, but rich descriptions of how they want to interact with an LLM. You could have one profile tuned for research, another for code, another for general conversation, each with its own tone, style, and integration preferences. The LLM adapts to the profile, not the other way around.
+
+---
+
+## Current State
+
+**This is a personal project in active development. It is not production software.**
+
+The original proof-of-concept worked as a companion chat interface formatted for roleplay-style LLMs. That version is functional but is being rebuilt to support the memory and profile work described above. Expect rough edges, incomplete features, and ongoing changes.
+
+### What Works Now
+
+- Multiple character creation with detailed personality profiles
+- Default companions (Echo and Kairos) included as starting points
+- Inclusive character system — any identity, orientation, or relationship type
+- Lorebook system for custom prompts and personality patterns
+- Long-term memory via vector database (ChromaDB)
+- Optional web search integration
+- Favorite messages, ambient audio, dark mode
+- Mobile-friendly responsive design
+- Encrypted user profiles (AES-256-GCM)
+- Fully offline operation (except optional web search)
+
+### What's Planned
+
+- Implementation and testing of the new memory architecture
+- Profile-based user system for multi-purpose LLM interaction
+- Image understanding (without storage)
+- Link/URL comprehension in conversations
+- Optional audio features
+- Multi-language support
+- Mobile app options
+- Model download helpers
+- Group chat
 
 ---
 
@@ -68,192 +112,75 @@ Give your AI a bit of personality. The idea is to provide a model agnostic inter
 
 ---
 
-## Features
+## Privacy
 
-### What's Included
-- 🎭 **Multiple characters** - Create different AI personalities with detailed profiles
-- 🤖 **Default companions** - Echo (fun & chatty) and Kairos (wellness & reflection) included to get started
-- 🌈 **Inclusive character system** - Build any identity, orientation, or relationship type
-- 📝 **Lorebook system** - Custom prompts and personality patterns
-- 💾 **Long-term memory** - Vector database remembers past conversations
-- 🔍 **Web search** (optional) - AI can look up current info
-- ❤️ **Favorite messages** - Save the good stuff
-- 🎵 **Ambient audio** - Built-in music player for vibes
-- 📱 **Mobile friendly** - Works on phones and tablets
-- 🌙 **Dark mode** - Easy on the eyes
-- 🔐 **Encrypted profiles** - Your data is protected
+This is non-negotiable in Oread's design:
 
-### What Makes It Different
-- **Emotionally aware conversations** 
-- **Works offline** (except optional web search)
-- **Model-agnostic** - Use any GGUF model you want
-- **No typing indicators like \*waves\*** - Natural dialogue
-- **Time-aware** - Different greetings based on time of day
+- All conversations stay on your machine
+- Profiles encrypted with AES-256-GCM
+- No telemetry, no analytics, no cloud sync
+- You own everything
+- The server runs on localhost only and does not expose itself to the internet by default
 
-### Getting the Best Roleplay Experience
-
-**Fill Out Your User Profile:** The more you tell your AI about yourself, the better it can personalize conversations. Add details about your interests, background, and preferences in Settings for richer, more engaging interactions.
-
-**About Fictional References:** During roleplay, your AI may reference or create fictional characters and scenarios. This is normal and expected—roleplay is collaborative storytelling. The AI might reference popular media, create new characters, or build imaginary worlds as part of your shared narrative. This is all part of the creative fiction-building experience.
-
----
-
-## Safety & Ethics (The Important Stuff)
-
-> See [SECURITY_ETHICS_SAFETY.md](SECURITY_ETHICS_SAFETY.md).
-
----
-
-## Quick Start
-
-### What You Need
-- **RAM:** 16GB minimum (32GB better for larger models)
-- **Storage:** 10GB+ free space
-- **OS:** macOS, Linux, or Windows (WSL recommended)
-- **Optional:** GPU (runs faster with Apple Silicon, NVIDIA, or AMD)
-
-### Auto-Downloaded Models
-
-On first startup, Oread automatically downloads two small AI models to the `models/` folder:
-
-| Model | Size | Purpose | Location |
-|-------|------|---------|----------|
-| `all-MiniLM-L6-v2` | ~90MB | Semantic memory search (finds related conversations) | `models/embeddings/` |
-| `roberta-base-go_emotions` | ~500MB | Emotion detection (understands how you're feeling) | `models/huggingface/` |
-
-These download once and are cached locally. Both run entirely on your machine - no cloud, no API calls.
-
-### Getting Started
-
-1. **Install** - Follow the [INSTALLATION.md](INSTALLATION.md) guide
-2. **Download a model** - See [Installation](INSTALLATION.md) for an overview of model options
-3. **Start Oread** - Run `./start-oread.sh`
-4. **Open browser** - Go to `https://localhost:9000`
-5. **Login** - Default password is `oread` (change it immediately!)
-6. **Accept terms** - Read and agree to safety protocols
-7. **Start chatting!** - Echo or Kairos are ready to talk
-
-Full instructions: [INSTALLATION.md](INSTALLATION.md)
-
----
-
-## Privacy & Security
-
-### What's Protected
-- ✅ All conversations stay on your computer
-- ✅ Profiles encrypted (AES-256-GCM)
-- ✅ No telemetry or analytics
-- ✅ No cloud sync
-- ✅ You own everything
-
-### What's NOT Encrypted
-- Demo characters (Echo, Kairos) - they're examples
-- Web search queries (if you enable that feature)
-
-### Important Notes
-- **Backup regularly** - Settings → Download Backup
-- **localhost only** - Server doesn't expose to internet by default
-- **Physical access = risk** - Anyone with your computer can access your data
+**What is not encrypted:** demo characters (Echo, Kairos) and web search queries if you enable that feature. Physical access to your computer means access to your data — back up regularly.
 
 Full details: [SECURITY_ETHICS_SAFETY.md](SECURITY_ETHICS_SAFETY.md)
 
 ---
 
-## License (TL;DR)
+## Getting Started
 
-**Open source for non-commercial use only.**
+### Requirements
 
-Licensed under **Oread Non-Commercial License v1.0**:
+- **RAM:** 16GB minimum (32GB recommended for larger models)
+- **Storage:** 10GB+ free space
+- **OS:** macOS, Linux, or Windows (WSL recommended)
+- **Optional:** GPU (faster with Apple Silicon, NVIDIA, or AMD)
 
-### You CAN:
-- ✅ Use it for free (personal, educational, research)
-- ✅ Modify the code
-- ✅ Study how it works
-- ✅ Contribute improvements
-- ✅ Share modifications (under same license)
+### Setup
 
-### You CANNOT:
-- ❌ Use it commercially or for profit
-- ❌ Sell, resell, or sublicense it
-- ❌ Use it in SaaS or paid services
-- ❌ Remove safety features
-- ❌ Remove attribution or license notices
+1. Follow the [Installation Guide](INSTALLATION.md)
+2. Download a model (see installation guide for options)
+3. Run `./start-oread.sh`
+4. Open `https://localhost:9000`
+5. Default password is `oread` — change it immediately
+6. Accept the safety protocols, then start chatting
 
-**Bottom line:** Free for personal use. No commercial use or resale. Safety features required. Attribution required.
+On first startup, Oread automatically downloads two small models for local processing (no cloud calls): `all-MiniLM-L6-v2` (~90MB, for semantic memory search) and `roberta-base-go_emotions` (~500MB, for emotion detection). Both are cached locally after the first download.
 
-**Need commercial licensing?** Contact the author.
+---
 
-Full license: [LICENSE](LICENSE)
+## About the Code History
+
+The public repo starts from the point where safety features were finalized. Earlier versions without those protections are kept in a [private repository](https://github.com/sleddd/oread-bu) to prevent easy removal of safeguards. Access can be requested, but I guard it carefully.
+
+---
+
+## License
+
+**Open source for non-commercial use only** under the Oread Non-Commercial License v1.0.
+
+You can use, modify, study, and share this software freely for personal, educational, or research purposes. You cannot use it commercially, sell it, remove safety features, or strip attribution. Full license: [LICENSE](LICENSE). For commercial licensing inquiries, contact me directly.
 
 ---
 
 ## Contributing
 
-Want to help? Awesome!
-
-- 🐛 **Found a bug?** [Open an issue](https://github.com/sleddd/oread/issues)
-- 💡 **Have an idea?** Start a discussion
-- 🔧 **Can code?** Submit a pull request
-- 📖 **Like writing?** Improve the docs
-
-**Rules:** Don't remove safety features, test your changes, document what you did.
+Bug reports, ideas, code contributions, and documentation improvements are all welcome. The one rule: don't remove safety features. See [the issues page](https://github.com/4tlasX/oread-companion/issues) or start a discussion.
 
 ---
 
-## What's Coming and Experiement Features
+## Built With
 
-### Planned Features
-- A way to understand, but not store user images
-- A way to understand user shared links
-- Optional audio
-- Multi-language Support - It is just English right now
-- Mobile app options
-- Model download options
-- Group chat
+- [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) — LLM inference
+- [ChromaDB](https://www.trychroma.com/) — Memory system
+- [Express](https://expressjs.com/) — Web server
+- [Brave Search API](https://brave.com/search/api/) — Web search
+
+Developed with the assistance of Claude (Anthropic).
 
 ---
 
-## Support
+## Questions?
 
-- **Questions?** Check the [FAQ](FAQ.md)
-- **Problems?** [Open an issue](https://github.com/sleddd/oread/issues)
-- **Need help?** Start a discussion
-
----
-
-## About This Project
-
-Built by someone who wanted an AI assistant/companion without the corporate nonsense. Developed with AI assistance (Claude) because building AI tools with AI is delightfully meta and qiuck.
-
-**Why no full Git history?** The repo starts from when safety features were finalized. Earlier versions (without protections) are kept private to prevent easy removal of safeguards. You can request access, but I do guard it very carefully [Original private git](https://github.com/sleddd/oread-bu)
-
-
----
-
-## Credits
-
-Built with:
-- [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) - LLM inference
-- [ChromaDB](https://www.trychroma.com/) - Memory system
-- [Express](https://expressjs.com/) - Web server
-- [Brave Search API](https://brave.com/search/api/) - Web search
-
-Developed with the assistance of Claude (Anthropic) to decrease development time.
-
----
-
-<div align="center">
-
-**AI should be fun, private, and safe.**
-
-**Built for people who believe privacy and ethics actually matter.**
-
----
-
-⚠️ **Disclaimer:** Use at your own risk. You're responsible for how you use this software, what models you choose, and who accesses your computer. We're not liable for data loss, security issues, or anything else. Back up your data. Read the license. Be smart.
-
----
-
-[⬆ Back to Top](#oread---your-privacy-first-ai-companion)
-
-</div>
+Check the [FAQ](FAQ.md) or [open an issue](https://github.com/4tlasX/oread-companion/issues).

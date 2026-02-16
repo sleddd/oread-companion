@@ -69,7 +69,7 @@ The original proof-of-concept worked as a companion chat interface formatted for
 - Conversion of users to profiles
 - Implementation and testing of the new memory architecture
 - Temperature controls in interface
-- Removal and consolidation of personal traits into limited profile data
+- Removal and consolidation of personality traits into limited profile data
 - Removal of AI types such as platonic and non-platonic
 - Introduction of cloud based API options for Claude, ChatGPT, Gemini etc
   

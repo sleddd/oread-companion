@@ -38,11 +38,11 @@ Oread is evolving from a companion chat interface into a two-pronged rebuild:
 
 ### 1. A Memory Theory Tested
 
-I'm building and proving my own theory of AI memory, informed by ideas I explore in [What Gertrude Stein Taught Me About AI](https://github.com/4tlasX/writing-and-theory/blob/main/what-gertrude-stein-taught-me-about-ai). The short version: current approaches to AI memory are insufficient, and I believe there are better models for how context, recall, and conversational continuity should work. Oread is where I test that.
+I'm building and proving my own theory of AI memory, informed by ideas I explore in [What Gertrude Stein Taught Me About AI](https://github.com/4tlasX/writing-and-theory/blob/main/what-gertrude-stein-taught-me-about-ai). The short version: current approaches to AI memory are insufficient, and I believe there are better models for how context, recall, and conversational continuity should work. Oread is where I test that. I am currently working on testing extraction ideas in isolation before pulling this back into the app for the rebuild. This is why the rebuild is going slowly. It takes time to find the right low resource tools and extraction patterns/prompting. I also have very limited time for this application's development.
 
 ### 2. A Profile-Based Assistive Interface
 
-The goal is for Oread to become an interface where users are defined as profiles — not just usernames, but rich descriptions of how they want to interact with an LLM. You could have one profile tuned for research, another for code, another for general conversation, each with its own tone, style, and integration preferences. The LLM adapts to the profile, not the other way around.
+The goal is for Oread to become an interface where users are defined as profiles — not just usernames, but rich descriptions of how they want to interact with an AI/LLM. You could have one profile tuned for research, another for code, another for general conversation, each with its own tone, style, and integration preferences. The LLM adapts to the profile, not the other way around.
 
 ---
 

@@ -20,12 +20,15 @@ Oread began because I wanted a companion-style AI conversation app — something
 
 ### What I've Learned Building This
 
-- How to use and implement local AI models and tooling
+- How to use and implement local AI models
 - How to develop and fine-tune AI models
-- How to build custom sentiment analysis tools
-- How AI context windows and chat memory actually work
-- How to integrate services like web search into a local interface
-- The practical quirks of working with LLMs and NLP day-to-day
+- How to build my own sentiment analysis tools
+- How AI context and chat memory work
+- The nature of LLM/AI personality and its problems
+- RAG memory retrieval techniques
+- System prompt and character card development
+- Prompt engineering techniques for varied types of models
+- Quirks of working with LLMs and NLP
 
 ---
 
@@ -33,7 +36,7 @@ Oread began because I wanted a companion-style AI conversation app — something
 
 Oread is evolving from a companion chat interface into a two-pronged rebuild:
 
-### 1. A Memory Theory Testbed
+### 1. A Memory Theory Tested
 
 I'm building and proving my own theory of AI memory, informed by ideas I explore in [What Gertrude Stein Taught Me About AI](https://github.com/4tlasX/writing-and-theory/blob/main/what-gertrude-stein-taught-me-about-ai). The short version: current approaches to AI memory are insufficient, and I believe there are better models for how context, recall, and conversational continuity should work. Oread is where I test that.
 
@@ -63,17 +66,13 @@ The original proof-of-concept worked as a companion chat interface formatted for
 - Fully offline operation (except optional web search)
 
 ### What's Planned
-
+- Conversion of users to profiles
 - Implementation and testing of the new memory architecture
-- Profile-based user system for multi-purpose LLM interaction
-- Image understanding (without storage)
-- Link/URL comprehension in conversations
-- Optional audio features
-- Multi-language support
-- Mobile app options
-- Model download helpers
-- Group chat
-
+- Temperature controls in interface
+- Removal and consolidation of personal traits into limited profile data
+- Removal of AI types such as platonic and non-platonic
+- Introduction of cloud based API options for Claude, ChatGPT, Gemini etc
+  
 ---
 
 ## Screenshots

@@ -2,6 +2,10 @@
 
 A modern, full-stack chat interface with advanced memory and character roleplay features for local Ollama models. Built with Node.js, Express, React, Vite, LangChain, and Model Context Protocol (MCP).
 
+## Current State
+Use at your own risk. This app is in rebuild and while fully working and ready to use, it has not been fully bug tested and reviewed. Using it means you assume full liability for what goes wrong or any security issues. I hope to have it fully reviewed within the next few weeks, until then feel free to use it if you want.
+
+
 ## Features
 
 ### 🧠 Memory System (NEW v3.0.0)

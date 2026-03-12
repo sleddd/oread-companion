@@ -267,14 +267,6 @@ When memory is enabled in roleplay mode:
 │       ├── general.json
 │       └── meta.json
 │
-├── docs/                    # Documentation
-│   ├── README.md
-│   ├── ZUSTAND_MIGRATION.md
-│   ├── SETTINGS_PERSISTENCE.md
-│   ├── HOW_SETTINGS_WORK.md
-│   └── ... (more guides)
-│
-├── MEMORY_SYSTEM_GUIDE.md   # Memory system testing guide
 ├── CLAUDE.md                # Complete developer documentation
 └── README.md                # This file
 │
@@ -582,17 +574,6 @@ App.jsx (Minimal - routing & initialization)
 - **Ollama Service**: Must be running locally on `http://localhost:11434`
 - **MCP Servers**: SQLite, Filesystem, Vector Store (auto-started by backend)
 - **Embedding Model**: nomic-embed-text (download: `ollama pull nomic-embed-text`)
-
-## Documentation
-
-- [README.md](README.md) - This file (user documentation)
-- [CLAUDE.md](CLAUDE.md) - Complete developer documentation
-- [MEMORY_SYSTEM_GUIDE.md](MEMORY_SYSTEM_GUIDE.md) - Memory system testing guide
-- [docs/](docs/) - Additional technical documentation
-  - [ZUSTAND_MIGRATION.md](docs/ZUSTAND_MIGRATION.md) - State management guide
-  - [SETTINGS_PERSISTENCE.md](docs/SETTINGS_PERSISTENCE.md) - Settings storage guide
-  - [HOW_SETTINGS_WORK.md](docs/HOW_SETTINGS_WORK.md) - Settings architecture
-  - [QUICK_START.md](docs/QUICK_START.md) - Quick start guide
 
 ## Version History
 

@@ -31,14 +31,7 @@ export default function UtilitySettingsPanel({ settings, onChange }) {
 
   return (
     <div className="utility-settings-panel">
-      <h3 className="utility-settings-panel__title">Utility/Normal Mode Settings</h3>
-      <p className="utility-settings-panel__description">
-        Configure how the assistant behaves in normal (non-roleplay) mode.
-      </p>
-
       <div className="utility-settings-panel__section">
-        <h4 className="utility-settings-panel__section-title">Assistant Identity</h4>
-
         <div className="utility-settings-panel__field">
           <label className="utility-settings-panel__label">Persona & Role</label>
           <TextArea

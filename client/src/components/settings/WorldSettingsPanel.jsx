@@ -32,8 +32,6 @@ export default function WorldSettingsPanel({ settings, onChange }) {
 
   return (
     <div className="world-settings-panel">
-      <h3 className="world-settings-panel__title">World & Narrative Settings</h3>
-
       <div className="world-settings-panel__field">
         <label className="world-settings-panel__label">Setting & Lore</label>
         <TextArea

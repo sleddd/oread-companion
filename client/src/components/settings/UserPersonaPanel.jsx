@@ -63,14 +63,7 @@ export default function UserPersonaPanel({ settings, onChange }) {
 
   return (
     <div className="user-persona-panel">
-      <h3 className="user-persona-panel__title">User Persona</h3>
-      <p className="user-persona-panel__description">
-        Help the AI understand you better. This information is shared across both roleplay and normal modes.
-      </p>
-
       <div className="user-persona-panel__section">
-        <h4 className="user-persona-panel__section-title">Basic Information</h4>
-
         <div className="user-persona-panel__field">
           <label className="user-persona-panel__label">Your Name</label>
           <TextField

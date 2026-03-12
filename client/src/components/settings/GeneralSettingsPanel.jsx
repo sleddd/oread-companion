@@ -24,11 +24,7 @@ export default function GeneralSettingsPanel({ settings, onChange, models = [] }
 
   return (
     <div className="general-settings-panel">
-      <h3 className="general-settings-panel__title">General Settings</h3>
-
       <div className="general-settings-panel__section">
-        <h4 className="general-settings-panel__section-title">Model Configuration</h4>
-
         <div className="general-settings-panel__field">
           <label className="general-settings-panel__label">Default Model</label>
           <Dropdown

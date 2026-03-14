@@ -3,6 +3,7 @@ import useStore from './store/useStore';
 import Header from './components/layout/Header';
 import ChatPage from './pages/ChatPage';
 import Settings from './pages/Settings';
+import ErrorBoundary from './components/ErrorBoundary';
 import './styles/global.scss';
 
 function App() {
@@ -27,8 +28,10 @@ function App() {
       />
       <div className="app__container">
         <main className="main-content">
-          {currentPage === 'chat' && <ChatPage />}
-          {currentPage === 'settings' && <Settings />}
+          <ErrorBoundary>
+            {currentPage === 'chat' && <ChatPage />}
+            {currentPage === 'settings' && <Settings />}
+          </ErrorBoundary>
         </main>
       </div>
     </div>

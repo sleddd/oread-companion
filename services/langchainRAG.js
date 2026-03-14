@@ -3,27 +3,28 @@ import mcpClient from './mcpClient.js';
 import vectorSearch from './vectorSearch.js';
 import database from './database.js';
 import crypto from 'crypto';
+import { CONFIG } from '../config/index.js';
 
 class LangChainRAGService {
   constructor() {
     // Initialize Ollama LLM
     this.llm = new ChatOllama({
-      baseUrl: 'http://localhost:11434',
-      model: 'llama2',
+      baseUrl: CONFIG.OLLAMA_URL,
+      model: CONFIG.OLLAMA_CHAT_MODEL,
       temperature: 0.7
     });
 
     // Initialize embeddings model
     this.embeddings = new OllamaEmbeddings({
-      baseUrl: 'http://localhost:11434',
-      model: 'nomic-embed-text'
+      baseUrl: CONFIG.OLLAMA_URL,
+      model: CONFIG.OLLAMA_EMBED_MODEL
     });
   }
 
   /**
    * Query with RAG - combines recent messages with semantic search
    */
-  async queryWithRAG(sessionId, userMessage, settings, model = 'llama2') {
+  async queryWithRAG(sessionId, userMessage, settings, model = CONFIG.OLLAMA_CHAT_MODEL) {
     try {
       // 1. Get recent messages (last 20)
       const recentMessages = await mcpClient.querySQLite(
@@ -48,7 +49,7 @@ class LangChainRAGService {
           queryVector,
           5,
           true,
-          'nomic-embed-text'
+          CONFIG.OLLAMA_EMBED_MODEL
         );
 
         // Load message content for each result
@@ -76,7 +77,7 @@ class LangChainRAGService {
       // 5. Update LLM model if different
       if (this.llm.model !== model) {
         this.llm = new ChatOllama({
-          baseUrl: 'http://localhost:11434',
+          baseUrl: CONFIG.OLLAMA_URL,
           model,
           temperature: settings.general?.temperature || 0.7
         });
@@ -158,7 +159,7 @@ class LangChainRAGService {
           sessionId,
           vectorSearch.float32ArrayToBlob(vector),
           vector.length,
-          'nomic-embed-text',
+          CONFIG.OLLAMA_EMBED_MODEL,
           '1.0',
           checksum
         ]);

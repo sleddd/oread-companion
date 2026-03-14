@@ -1,6 +1,7 @@
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import mcpClient from '../services/mcpClient.js';
+import database from '../services/database.js';
 import { validate, validateUUID, sessionCreateSchema, sessionUpdateSchema } from '../middleware/validation.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
@@ -194,30 +195,24 @@ router.post('/:id/messages', validateUUID('id'), asyncHandler(async (req, res) =
   }
 
   const messageId = uuidv4();
+  const messageTimestamp = timestamp || new Date().toISOString();
 
-  await mcpClient.executeSQLite(
-    `INSERT INTO messages (id, session_id, role, content, model, system_prompt_hash, timestamp)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [
-      messageId,
-      req.params.id,
-      role,
-      content,
-      model || null,
-      system_prompt_hash || null,
-      timestamp || new Date().toISOString()
-    ]
-  );
+  await database.transaction(async () => {
+    await database.run(
+      `INSERT INTO messages (id, session_id, role, content, model, system_prompt_hash, timestamp)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [messageId, req.params.id, role, content, model || null, system_prompt_hash || null, messageTimestamp]
+    );
 
-  // Update session stats
-  await mcpClient.executeSQLite(
-    `UPDATE sessions
-     SET message_count = message_count + 1,
-         last_message_at = CURRENT_TIMESTAMP,
-         updated_at = CURRENT_TIMESTAMP
-     WHERE id = ?`,
-    [req.params.id]
-  );
+    await database.run(
+      `UPDATE sessions
+       SET message_count = message_count + 1,
+           last_message_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [req.params.id]
+    );
+  });
 
   res.json({
     success: true,
@@ -226,7 +221,7 @@ router.post('/:id/messages', validateUUID('id'), asyncHandler(async (req, res) =
       session_id: req.params.id,
       role,
       content,
-      timestamp: timestamp || new Date().toISOString()
+      timestamp: messageTimestamp
     }
   });
 }));

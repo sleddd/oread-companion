@@ -88,23 +88,6 @@ class MCPClientService {
     }
   }
 
-  // Vector store operations - DEPRECATED (now using SQLite directly)
-  // These methods are kept for backward compatibility but will be removed
-  async addVectors(sessionId, documents, vectors) {
-    console.warn('⚠️  addVectors() is deprecated - vectors are now stored in SQLite');
-    return { success: true, message: 'Using SQLite vector storage' };
-  }
-
-  async searchVectors(sessionId, queryVector, topK = 5) {
-    console.warn('⚠️  searchVectors() is deprecated - use vectorSearch service instead');
-    return { success: false, message: 'Use vectorSearch.search() instead' };
-  }
-
-  async getIndexStats(sessionId) {
-    console.warn('⚠️  getIndexStats() is deprecated - query message_vectors table instead');
-    return { success: false, message: 'Query message_vectors table instead' };
-  }
-
   async close() {
     // Close all MCP client connections
     for (const [name, client] of Object.entries(this.clients)) {

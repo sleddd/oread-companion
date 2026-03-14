@@ -1,23 +1,87 @@
 import express from 'express';
 import cors from 'cors';
+import session from 'express-session';
+import cookieParser from 'cookie-parser';
+
+// Configuration
+import { CONFIG, validateConfig } from './config/index.js';
+
+// Services
 import ollamaService from './services/ollama.js';
-import settingsRouter from './routes/settings.js';
-import sessionsRouter from './routes/sessions.js';
-import memoryRouter from './routes/memory.js';
-import charactersRouter from './routes/characters.js';
 import mcpClient from './services/mcpClient.js';
 import database from './services/database.js';
 import langchainRAG from './services/langchainRAG.js';
 import extractionAgent from './services/extractionAgent.js';
 import { initializeCharacters } from './controllers/characterController.js';
 
+// Routes
+import settingsRouter from './routes/settings.js';
+import sessionsRouter from './routes/sessions.js';
+import memoryRouter from './routes/memory.js';
+import charactersRouter from './routes/characters.js';
+
+// Middleware
+import {
+  generalLimiter,
+  strictLimiter,
+  securityHeaders,
+  corsConfig,
+  requestSizeMonitor,
+  securityLogger,
+  sanitizeInputs
+} from './middleware/security.js';
+import { errorHandler, notFoundHandler, asyncHandler } from './middleware/errorHandler.js';
+import { validate, chatSchema, modelPullSchema } from './middleware/validation.js';
+
 const app = express();
-const PORT = 3001;
+const PORT = CONFIG.PORT;
 
-app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Increased limit for base64 images
+// Validate configuration on startup
+validateConfig();
 
-// Initialize services
+// ===== SECURITY MIDDLEWARE =====
+
+// Security headers (Helmet)
+app.use(securityHeaders);
+
+// CORS with strict configuration
+app.use(cors(corsConfig));
+
+// Cookie parser (for session management)
+app.use(cookieParser());
+
+// Session management
+app.use(session({
+  secret: CONFIG.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: CONFIG.isProduction, // HTTPS only in production
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'strict'
+  },
+  name: 'oread.sid' // Custom session name
+}));
+
+// Request size validation and monitoring
+app.use(requestSizeMonitor);
+
+// Body parser with size limit
+app.use(express.json({ limit: CONFIG.MAX_UPLOAD_SIZE }));
+app.use(express.urlencoded({ extended: true, limit: CONFIG.MAX_UPLOAD_SIZE }));
+
+// Input sanitization
+app.use(sanitizeInputs);
+
+// Security logging
+app.use(securityLogger);
+
+// General rate limiting for all API routes
+app.use('/api', generalLimiter);
+
+// ===== SERVICES INITIALIZATION =====
+
 async function initializeServices() {
   try {
     console.log('🔌 Initializing services...');
@@ -28,10 +92,11 @@ async function initializeServices() {
     // Initialize MCP clients
     await mcpClient.initialize();
 
-    // Initialize character system (defaults ready, user folder empty)
+    // Initialize character system
     initializeCharacters();
 
     console.log('✅ All services initialized');
+    console.log(`🔒 Security: Auth=${CONFIG.ENABLE_AUTH ? 'ENABLED' : 'DISABLED (dev mode)'}`);
     return true;
   } catch (error) {
     console.error('❌ Service initialization failed:', error);
@@ -39,91 +104,94 @@ async function initializeServices() {
   }
 }
 
-// API routes
+// ===== API ROUTES =====
+
 app.use('/api/settings', settingsRouter);
 app.use('/api/sessions', sessionsRouter);
 app.use('/api/memory', memoryRouter);
 app.use('/api/characters', charactersRouter);
 
-// Health check endpoint
-app.get('/api/health', async (req, res) => {
+// ===== HEALTH CHECK =====
+
+app.get('/api/health', asyncHandler(async (req, res) => {
+  const health = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    services: {}
+  };
+
+  // Check Ollama
   try {
-    const health = await ollamaService.checkHealth();
-    res.json(health);
+    await ollamaService.checkHealth();
+    health.services.ollama = 'ok';
   } catch (error) {
-    res.status(500).json({
-      status: 'error',
-      message: error.message
-    });
+    health.services.ollama = 'error';
+    health.status = 'degraded';
   }
-});
+
+  // Check database
+  try {
+    await database.get('SELECT 1');
+    health.services.database = 'ok';
+  } catch (error) {
+    health.services.database = 'error';
+    health.status = 'error';
+  }
+
+  // Check MCP
+  health.services.mcp = mcpClient.clients ? 'ok' : 'not_initialized';
+
+  const statusCode = health.status === 'ok' ? 200 : 503;
+  res.status(statusCode).json(health);
+}));
+
+// ===== MODEL MANAGEMENT =====
 
 // List available models
-app.get('/api/models', async (req, res) => {
-  try {
-    const result = await ollamaService.listModels();
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
+app.get('/api/models', asyncHandler(async (req, res) => {
+  const result = await ollamaService.listModels();
+  res.json(result);
+}));
 
 // Pull/download a model with SSE for progress updates
-app.post('/api/models/pull', async (req, res) => {
+app.post('/api/models/pull', strictLimiter, validate(modelPullSchema), asyncHandler(async (req, res) => {
   const { modelName } = req.body;
 
-  if (!modelName) {
-    return res.status(400).json({
-      success: false,
-      error: 'Model name is required'
-    });
-  }
+  // Set up SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
 
   try {
-    // Set up SSE headers
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-
     const stream = await ollamaService.pullModel(modelName);
 
     for await (const chunk of stream) {
-      // Send progress updates to client
       res.write(`data: ${JSON.stringify(chunk)}\n\n`);
     }
 
-    // Send completion message
     res.write(`data: ${JSON.stringify({ status: 'success', completed: true })}\n\n`);
     res.end();
   } catch (error) {
-    res.write(`data: ${JSON.stringify({ status: 'error', error: error.message })}\n\n`);
+    res.write(`data: ${JSON.stringify({ status: 'error', error: CONFIG.isDevelopment ? error.message : 'Download failed' })}\n\n`);
     res.end();
   }
-});
+}));
+
+// ===== CHAT ENDPOINT =====
 
 // Chat endpoint with streaming response and RAG support
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', strictLimiter, validate(chatSchema), asyncHandler(async (req, res) => {
   const { model, messages, systemPrompt, temperature, topP, maxTokens, sessionId, settings } = req.body;
 
-  if (!model || !messages) {
-    return res.status(400).json({
-      success: false,
-      error: 'Model and messages are required'
-    });
-  }
+  // Set up SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  let messagesToSend = messages;
+  let ragUsed = false;
 
   try {
-    // Set up SSE headers
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-
-    let messagesToSend = messages;
-    let ragUsed = false;
-
     // Check if we should use RAG
     if (sessionId && settings) {
       const shouldUseRAG = await langchainRAG.shouldUseRAG(sessionId, settings);
@@ -157,102 +225,92 @@ app.post('/api/chat', async (req, res) => {
       maxTokens: maxTokens !== undefined ? maxTokens : undefined
     };
 
-    // Log received parameters
-    console.log('💬 Chat Request Received:');
-    console.log('Model:', model);
-    console.log('Messages:', messagesToSend.length, 'messages', ragUsed ? '(RAG)' : '(Full)');
-    console.log('System Prompt:', systemPrompt ? `${systemPrompt.substring(0, 100)}...` : 'None');
-    console.log('Temperature:', temperature, 'Top P:', topP, 'Max Tokens:', maxTokens);
+    // Log received parameters (sanitized)
+    if (CONFIG.isDevelopment) {
+      console.log('💬 Chat Request:');
+      console.log('Model:', model);
+      console.log('Messages:', messagesToSend.length, ragUsed ? '(RAG)' : '(Full)');
+      console.log('Temperature:', temperature, 'Top P:', topP);
+    }
+
+    // Save user message before streaming so it's persisted regardless of what follows
+    let userMsgId = null;
+    if (sessionId) {
+      const userMsg = messages[messages.length - 1];
+      userMsgId = await saveMessageToSession(sessionId, userMsg);
+    }
 
     const stream = await ollamaService.chat(model, messagesToSend, options);
 
     let assistantResponse = '';
 
     for await (const chunk of stream) {
-      // Accumulate response
       if (chunk.message?.content) {
         assistantResponse += chunk.message.content;
       }
-
-      // Send each token/chunk to client
       res.write(`data: ${JSON.stringify(chunk)}\n\n`);
     }
 
-    res.end();
-
-    // Background tasks after response sent
+    // Save assistant message before ending the response so the DB is consistent
+    // before the client considers the turn complete
+    let assistantMsgId = null;
     if (sessionId) {
-      // Save messages to session
-      const userMsg = messages[messages.length - 1];
       const assistantMsg = {
         role: 'assistant',
         content: assistantResponse,
         timestamp: new Date().toISOString()
       };
-
-      // Save messages (don't await)
-      Promise.all([
-        saveMessageToSession(sessionId, userMsg),
-        saveMessageToSession(sessionId, assistantMsg)
-      ]).then(async ([userMsgId, assistantMsgId]) => {
-        console.log('✅ Messages saved to session');
-
-        // Add to vector store if memory enabled
-        if (settings?.general?.memory) {
-          // Add IDs to messages for vector storage
-          langchainRAG.addDocuments(sessionId, [
-            { ...userMsg, id: userMsgId },
-            { ...assistantMsg, id: assistantMsgId }
-          ])
-            .catch(err => console.error('Embedding error:', err));
-        }
-
-        // Check if we should run extraction
-        if (settings?.mode === 'roleplay' && settings?.general?.memory) {
-          const shouldAnalyze = await extractionAgent.shouldRunAnalysis(sessionId);
-          if (shouldAnalyze) {
-            console.log('🔍 Running extraction analysis...');
-            extractionAgent.analyzeConversation(sessionId, settings)
-              .then(result => {
-                if (result.proposed_updates.length > 0) {
-                  console.log(`💡 Found ${result.proposed_updates.length} suggested updates`);
-                  // Store in database for frontend to retrieve
-                  saveExtractionResults(sessionId, result.proposed_updates)
-                    .catch(err => console.error('Save extraction error:', err));
-                }
-              })
-              .catch(err => console.error('Extraction error:', err));
-          }
-        }
-      }).catch(err => console.error('Background task error:', err));
+      assistantMsgId = await saveMessageToSession(sessionId, assistantMsg);
+      console.log('✅ Messages saved to session');
     }
 
+    res.end();
+
+    // Background tasks: embeddings and extraction are not critical-path, fine as fire-and-forget
+    if (sessionId && settings?.general?.memory) {
+      const userMsg = messages[messages.length - 1];
+      const assistantMsg = { role: 'assistant', content: assistantResponse };
+
+      langchainRAG.addDocuments(sessionId, [
+        { ...userMsg, id: userMsgId },
+        { ...assistantMsg, id: assistantMsgId }
+      ]).catch(err => console.error('Embedding error:', err));
+
+      if (settings?.mode === 'roleplay') {
+        extractionAgent.shouldRunAnalysis(sessionId).then(async shouldAnalyze => {
+          if (shouldAnalyze) {
+            console.log('🔍 Running extraction analysis...');
+            const result = await extractionAgent.analyzeConversation(sessionId, settings);
+            if (result.proposed_updates.length > 0) {
+              console.log(`💡 Found ${result.proposed_updates.length} suggested updates`);
+              await saveExtractionResults(sessionId, result.proposed_updates);
+            }
+          }
+        }).catch(err => console.error('Extraction error:', err));
+      }
+    }
   } catch (error) {
-    res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+    const errorMsg = CONFIG.isDevelopment ? error.message : 'Chat request failed';
+    res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
     res.end();
   }
-});
+}));
 
-// Helper function to save message to session
+// ===== HELPER FUNCTIONS =====
+
 async function saveMessageToSession(sessionId, message) {
-  try {
-    const { v4: uuidv4 } = await import('uuid');
-    const messageId = uuidv4();
+  const { v4: uuidv4 } = await import('uuid');
+  const messageId = uuidv4();
+  const timestamp = message.timestamp || new Date().toISOString();
 
-    await mcpClient.executeSQLite(
+  await database.transaction(async () => {
+    await database.run(
       `INSERT INTO messages (id, session_id, role, content, timestamp)
        VALUES (?, ?, ?, ?, ?)`,
-      [
-        messageId,
-        sessionId,
-        message.role,
-        message.content,
-        message.timestamp || new Date().toISOString()
-      ]
+      [messageId, sessionId, message.role, message.content, timestamp]
     );
 
-    // Update session stats
-    await mcpClient.executeSQLite(
+    await database.run(
       `UPDATE sessions
        SET message_count = message_count + 1,
            last_message_at = CURRENT_TIMESTAMP,
@@ -260,18 +318,13 @@ async function saveMessageToSession(sessionId, message) {
        WHERE id = ?`,
       [sessionId]
     );
+  });
 
-    return messageId;
-  } catch (error) {
-    console.error('Save message error:', error);
-    throw error;
-  }
+  return messageId;
 }
 
-// Helper function to save extraction results
 async function saveExtractionResults(sessionId, proposedUpdates) {
   try {
-    // Store in latest message's extracted_data field
     await mcpClient.executeSQLite(
       `UPDATE messages
        SET extracted_data = ?,
@@ -287,27 +340,75 @@ async function saveExtractionResults(sessionId, proposedUpdates) {
   }
 }
 
-// Start server after initialization completes
+// ===== ERROR HANDLING =====
+
+// 404 handler
+app.use(notFoundHandler);
+
+// Global error handler
+app.use(errorHandler);
+
+// ===== GRACEFUL SHUTDOWN =====
+
+let server;
+
+async function gracefulShutdown(signal) {
+  console.log(`\n${signal} received. Starting graceful shutdown...`);
+
+  if (server) {
+    server.close(async () => {
+      console.log('HTTP server closed');
+
+      try {
+        await database.close();
+        await mcpClient.close();
+        console.log('✅ Graceful shutdown complete');
+        process.exit(0);
+      } catch (error) {
+        console.error('Error during shutdown:', error);
+        process.exit(1);
+      }
+    });
+
+    // Force shutdown after 30 seconds
+    setTimeout(() => {
+      console.error('Forced shutdown after timeout');
+      process.exit(1);
+    }, 30000);
+  } else {
+    process.exit(0);
+  }
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// ===== SERVER STARTUP =====
+
 async function startServer() {
   try {
-    // Wait for all services to initialize
     await initializeServices();
 
-    // Now start the server
-    app.listen(PORT, () => {
-      console.log(`🚀 Ollama Chat Backend running on http://localhost:${PORT}`);
+    server = app.listen(PORT, () => {
+      console.log(`🚀 Oread Chat Backend running on http://localhost:${PORT}`);
+      console.log(`🔒 Environment: ${CONFIG.NODE_ENV}`);
+      console.log(`🔐 Security Features:`);
+      console.log(`   - Rate Limiting: ENABLED`);
+      console.log(`   - CORS: ${CONFIG.ALLOWED_ORIGINS.join(', ')}`);
+      console.log(`   - Security Headers: ENABLED (Helmet)`);
+      console.log(`   - Input Validation: ENABLED`);
+      console.log(`   - Path Traversal Protection: ENABLED`);
+      console.log(`   - SQL Injection Protection: ENABLED`);
+      console.log(`   - File Upload Validation: ENABLED`);
       console.log(`📡 API endpoints:`);
       console.log(`   - GET  /api/health`);
       console.log(`   - GET  /api/models`);
       console.log(`   - POST /api/models/pull`);
       console.log(`   - POST /api/chat`);
-      console.log(`   - GET  /api/settings`);
-      console.log(`   - POST /api/settings`);
-      console.log(`   - DELETE /api/settings`);
-      console.log(`   - GET  /api/characters`);
-      console.log(`   - GET  /api/characters/:id`);
-      console.log(`   - POST /api/characters/:id`);
-      console.log(`   - DELETE /api/characters/:id`);
+      console.log(`   - /api/settings/*`);
+      console.log(`   - /api/sessions/*`);
+      console.log(`   - /api/memory/*`);
+      console.log(`   - /api/characters/*`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
@@ -315,5 +416,4 @@ async function startServer() {
   }
 }
 
-// Start the server
 startServer();

@@ -87,22 +87,6 @@ class DatabaseService {
       );
     `);
 
-    // Embeddings table (legacy - will be replaced by message_vectors)
-    await this.db.exec(`
-      CREATE TABLE IF NOT EXISTS embeddings (
-        id TEXT PRIMARY KEY,
-        session_id TEXT NOT NULL,
-        message_id TEXT,
-        text_hash TEXT NOT NULL,
-        text_preview TEXT,
-        model TEXT NOT NULL,
-        vector_file TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        metadata TEXT,
-        FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
-        FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
-      );
-    `);
 
     // Message vectors table (NEW - replaces FAISS files)
     await this.db.exec(`
@@ -130,16 +114,6 @@ class DatabaseService {
     await this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_messages_role
       ON messages(role);
-    `);
-
-    await this.db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_embeddings_session
-      ON embeddings(session_id);
-    `);
-
-    await this.db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_embeddings_hash
-      ON embeddings(text_hash);
     `);
 
     await this.db.exec(`
@@ -184,6 +158,21 @@ class DatabaseService {
       throw new Error('Database not initialized');
     }
     return await this.db.get(sql, params);
+  }
+
+  async transaction(fn) {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    await this.db.run('BEGIN');
+    try {
+      const result = await fn();
+      await this.db.run('COMMIT');
+      return result;
+    } catch (error) {
+      await this.db.run('ROLLBACK');
+      throw error;
+    }
   }
 
   async close() {

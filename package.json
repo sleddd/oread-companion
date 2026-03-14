@@ -6,7 +6,12 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "security:audit": "npm audit",
+    "security:audit:fix": "npm audit fix",
+    "security:check": "npm outdated",
+    "security:update": "npm update",
+    "test": "echo 'No tests yet' && exit 0"
   },
   "keywords": [
     "ollama",
@@ -21,9 +26,16 @@
     "@langchain/core": "^1.1.32",
     "@langchain/ollama": "^1.2.6",
     "@modelcontextprotocol/sdk": "^1.27.1",
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "csurf": "^1.11.0",
+    "dotenv": "^16.6.1",
     "express": "^4.18.2",
-    "faiss-node": "^0.5.1",
+    "express-rate-limit": "^8.3.1",
+    "express-session": "^1.19.0",
+"helmet": "^8.1.0",
+    "joi": "^18.0.2",
     "langchain": "^1.2.31",
     "ollama": "^0.6.3",
     "sqlite": "^5.1.1",

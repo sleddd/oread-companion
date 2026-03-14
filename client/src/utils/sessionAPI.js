@@ -9,7 +9,13 @@ export async function createSession(name, settings) {
   try {
     const response = await apiFetch('/api/sessions', {
       method: 'POST',
-      body: JSON.stringify({ name, settings })
+      body: JSON.stringify({
+        name,
+        mode: settings?.mode || 'normal',
+        character_name: settings?.roleplay?.singleCharacter?.identity?.name || null,
+        character_mode: settings?.roleplay?.characterMode || 'single',
+        settings_snapshot: settings || null
+      })
     });
     return await response.json();
   } catch (error) {

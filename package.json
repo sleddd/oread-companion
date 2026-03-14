@@ -28,7 +28,6 @@
     "@langchain/core": "^1.1.32",
     "@langchain/ollama": "^1.2.6",
     "@modelcontextprotocol/sdk": "^1.27.1",
-    "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",

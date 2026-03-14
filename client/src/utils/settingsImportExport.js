@@ -89,63 +89,6 @@ export function importSettings(file) {
 }
 
 /**
- * Export settings as shareable URL (base64 encoded)
- * @param {Object} settings - Settings to share
- * @returns {String} Shareable URL
- */
-export function exportSettingsAsURL(settings) {
-  try {
-    // Create a lightweight version (no metadata)
-    const exportData = {
-      mode: settings.mode,
-      roleplay: settings.roleplay,
-      utility: settings.utility,
-      userPersona: settings.userPersona,
-      general: settings.general
-    };
-
-    const jsonString = JSON.stringify(exportData);
-    const base64 = btoa(jsonString);
-
-    const url = `${window.location.origin}${window.location.pathname}?settings=${base64}`;
-    return url;
-  } catch (error) {
-    console.error('Failed to export settings as URL:', error);
-    return null;
-  }
-}
-
-/**
- * Import settings from URL parameter
- * @returns {Object|null} Settings object or null if not found/invalid
- */
-export function importSettingsFromURL() {
-  try {
-    const urlParams = new URLSearchParams(window.location.search);
-    const settingsParam = urlParams.get('settings');
-
-    if (!settingsParam) {
-      return null;
-    }
-
-    const jsonString = atob(settingsParam);
-    const settings = JSON.parse(jsonString);
-
-    // Validate and sanitize
-    const validation = validateSettings(settings);
-    if (!validation.valid) {
-      console.error('Invalid settings from URL:', validation.errors);
-      return null;
-    }
-
-    return sanitizeSettings(settings);
-  } catch (error) {
-    console.error('Failed to import settings from URL:', error);
-    return null;
-  }
-}
-
-/**
  * Copy settings to clipboard as JSON
  * @param {Object} settings - Settings to copy
  * @returns {Promise<Object>} { success: boolean, message?: string, error?: string }
@@ -160,45 +103,4 @@ export async function copySettingsToClipboard(settings) {
   }
 }
 
-/**
- * Import settings from clipboard JSON
- * @returns {Promise<Object>} { success: boolean, settings?: Object, error?: string }
- */
-export async function importSettingsFromClipboard() {
-  try {
-    const jsonString = await navigator.clipboard.readText();
-    const settings = JSON.parse(jsonString);
 
-    // Validate
-    const validation = validateSettings(settings);
-    if (!validation.valid) {
-      return {
-        success: false,
-        error: `Invalid settings: ${validation.errors.join(', ')}`
-      };
-    }
-
-    // Sanitize
-    const sanitized = sanitizeSettings(settings);
-
-    return {
-      success: true,
-      settings: sanitized,
-      message: 'Settings imported from clipboard'
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: `Failed to import from clipboard: ${error.message}`
-    };
-  }
-}
-
-/**
- * Reset settings to defaults
- * @param {Object} defaultSettings - Default settings template
- * @returns {Object} Default settings
- */
-export function resetToDefaults(defaultSettings) {
-  return JSON.parse(JSON.stringify(defaultSettings));
-}

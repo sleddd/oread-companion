@@ -1,28 +1,27 @@
 // Template API routes
 import express from 'express';
-import { getAllDefaultTemplates, getDefaultTemplate } from '../controllers/templateController.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
+import { validate, settingsSchema } from '../middleware/validation.js';
+import {
+  getAllDefaultTemplates,
+  getDefaultTemplate,
+  getActiveTemplate,
+  saveActiveTemplate,
+  deleteActiveTemplate
+} from '../controllers/templateController.js';
 
 const router = express.Router();
 
-/**
- * GET /api/templates
- * Get all default templates
- */
-router.get('/', (req, res) => {
-  const result = getAllDefaultTemplates();
-  res.json(result);
-});
+// ─── Active Template (Settings) ───────────────────────────────────────────────
+// Must be registered before /:id to prevent "active" being captured as a template ID
 
-/**
- * GET /api/templates/:id
- * Get a single default template by ID
- */
-router.get('/:id', (req, res) => {
-  const result = getDefaultTemplate(req.params.id);
-  if (!result.success) {
-    return res.status(result.error === 'Template not found' ? 404 : 400).json(result);
-  }
-  res.json(result);
-});
+router.get('/active', asyncHandler(getActiveTemplate));
+router.put('/active', validate(settingsSchema), asyncHandler(saveActiveTemplate));
+router.delete('/active', asyncHandler(deleteActiveTemplate));
+
+// ─── Default Templates ────────────────────────────────────────────────────────
+
+router.get('/', getAllDefaultTemplates);
+router.get('/:id', getDefaultTemplate);
 
 export default router;

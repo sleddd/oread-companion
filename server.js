@@ -15,7 +15,6 @@ import extractionAgent from './services/extractionAgent.js';
 import { initializeCharacters } from './controllers/characterController.js';
 
 // Routes
-import settingsRouter from './routes/settings.js';
 import sessionsRouter from './routes/sessions.js';
 import memoryRouter from './routes/memory.js';
 import charactersRouter from './routes/characters.js';
@@ -118,7 +117,6 @@ app.get('/api/csrf-token', (req, res) => {
   res.json({ success: true, csrfToken: token });
 });
 
-app.use('/api/settings', settingsRouter);
 app.use('/api/sessions', sessionsRouter);
 app.use('/api/memory', memoryRouter);
 app.use('/api/characters', charactersRouter);
@@ -418,7 +416,7 @@ async function startServer() {
       console.log(`   - GET  /api/models`);
       console.log(`   - POST /api/models/pull`);
       console.log(`   - POST /api/chat`);
-      console.log(`   - /api/settings/*`);
+   
       console.log(`   - /api/sessions/*`);
       console.log(`   - /api/memory/*`);
       console.log(`   - /api/characters/*`);

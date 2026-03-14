@@ -2,7 +2,7 @@
  * Central API client with CSRF token management.
  *
  * Usage: import { apiFetch } from './apiClient';
- *   apiFetch('/api/settings', { method: 'POST', body: JSON.stringify(data) })
+ *   apiFetch('/api/templates/active', { method: 'PUT', body: JSON.stringify(data) })
  *
  * The CSRF token is fetched once on first use and cached for the session.
  */

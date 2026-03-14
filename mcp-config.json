@@ -1,9 +1,3 @@
 {
-  "mcpServers": {
-    "vector-store": {
-      "command": "node",
-      "args": ["./mcp-servers/vector-store-server.js"]
-    }
-  },
   "note": "SQLite and filesystem operations use direct access instead of MCP for better performance and simplicity"
 }

@@ -7,8 +7,8 @@ import Joi from 'joi';
 // Chat message validation
 export const chatSchema = Joi.object({
   model: Joi.string()
-    .pattern(/^[a-zA-Z0-9._:-]+$/)
-    .max(100)
+    .pattern(/^[a-zA-Z0-9._:/-]+$/)
+    .max(200)
     .required()
     .messages({
       'string.pattern.base': 'Model name contains invalid characters',
@@ -19,7 +19,7 @@ export const chatSchema = Joi.object({
     .items(
       Joi.object({
         role: Joi.string().valid('user', 'assistant', 'system').required(),
-        content: Joi.string().max(100000).required().messages({
+        content: Joi.string().max(100000).allow('').required().messages({
           'string.max': 'Message content too long (max: 100KB)'
         })
       })
@@ -34,9 +34,9 @@ export const chatSchema = Joi.object({
     'string.max': 'System prompt too long (max: 50KB)'
   }),
 
-  temperature: Joi.number().min(0).max(2).optional(),
-  topP: Joi.number().min(0).max(1).optional(),
-  maxTokens: Joi.number().min(1).max(100000).optional(),
+  temperature: Joi.number().min(0).max(2).allow(null).optional(),
+  topP: Joi.number().min(0).max(1).allow(null).optional(),
+  maxTokens: Joi.number().min(1).max(100000).allow(null).optional(),
 
   sessionId: Joi.string()
     .pattern(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)

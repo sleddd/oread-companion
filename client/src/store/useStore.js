@@ -62,10 +62,14 @@ const useStore = create((set, get) => ({
         console.log('✅ Settings loaded from localStorage');
       }
 
-      // Then try backend API (may override if newer)
+      // Then try backend API (authoritative — always overrides localStorage)
       const result = await loadSettingsAPI();
       if (result.success && result.settings) {
         set({ settings: result.settings });
+        // Keep localStorage in sync with backend (clears stale old-format data)
+        try {
+          localStorage.setItem('ollama-chat-settings', JSON.stringify(result.settings));
+        } catch (_) {}
         console.log('✅ Settings loaded from backend API');
       }
     } catch (error) {
@@ -223,7 +227,9 @@ const useStore = create((set, get) => ({
         method: 'POST',
         body: JSON.stringify({
           model: modelToUse,
-          messages: conversationHistory.map(m => ({ role: m.role, content: m.content })),
+          messages: conversationHistory
+            .map(m => ({ role: m.role, content: m.content }))
+            .filter(m => m.content !== ''),
           systemPrompt: systemPrompt,
           temperature: state.settings.general.temperature,
           topP: state.settings.general.topP,
@@ -269,6 +275,10 @@ const useStore = create((set, get) => ({
         }
       }
     } catch (error) {
+      // Remove any trailing empty assistant placeholder left by a failed send
+      set((state) => ({
+        messages: state.messages.filter(m => m.content !== '')
+      }));
       alert(`Chat failed: ${error.message}`);
     } finally {
       set({ isSending: false });
@@ -433,7 +443,13 @@ const useStore = create((set, get) => ({
     try {
       const response = await apiFetch('/api/sessions', {
         method: 'POST',
-        body: JSON.stringify({ name, settings })
+        body: JSON.stringify({
+          name,
+          mode: settings?.mode || 'normal',
+          character_name: settings?.roleplay?.singleCharacterRef || null,
+          character_mode: settings?.roleplay?.characterMode || 'single',
+          settings_snapshot: settings || null
+        })
       });
 
       const data = await response.json();

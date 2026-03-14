@@ -1,8 +1,9 @@
 // Backend API client for settings persistence
+// Settings are stored as the active template at /api/templates/active
 
 import { apiFetch } from './apiClient';
 
-const API_BASE = '/api/settings';
+const API_BASE = '/api/templates/active';
 
 export async function loadSettingsFromAPI() {
   try {
@@ -19,7 +20,7 @@ export async function loadSettingsFromAPI() {
 export async function saveSettingsToAPI(settings) {
   try {
     const response = await apiFetch(API_BASE, {
-      method: 'POST',
+      method: 'PUT',
       body: JSON.stringify({ settings })
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -38,7 +39,7 @@ export async function deleteSettingsFromAPI() {
     const data = await response.json();
     return data.settings;
   } catch (error) {
-    console.error('Error deleting settings from API:', error);
+    console.error('Error resetting settings from API:', error);
     throw error;
   }
 }

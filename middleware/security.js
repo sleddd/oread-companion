@@ -35,17 +35,6 @@ export const strictLimiter = rateLimit({
   legacyHeaders: false
 });
 
-// Authentication endpoint limiter (prevent brute force)
-export const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts
-  message: {
-    success: false,
-    error: 'Too many authentication attempts, please try again later'
-  },
-  standardHeaders: true,
-  legacyHeaders: false
-});
 
 /**
  * Security headers middleware (Helmet)
@@ -245,7 +234,6 @@ export function sanitizeInputs(req, res, next) {
 export default {
   generalLimiter,
   strictLimiter,
-  authLimiter,
   securityHeaders,
   corsConfig,
   requestSizeMonitor,

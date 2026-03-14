@@ -16,7 +16,7 @@ Oread is a chat interface that puts **worlds first**. Instead of just picking a 
 
 **Utility assistants** — Configure purpose-built AI tools like code reviewers, research assistants, or expert tutors with custom personas, guardrails, and formatting preferences. No world-building needed — just a focused identity and rules.
 
-Everything is saved as a **template** you can switch between instantly. Jump from a fantasy adventure to a code review session to a reflective conversation with one click.
+Everything is saved as a **world** you can switch between instantly. Jump from a fantasy adventure to a code review session to a reflective conversation with one click.
 
 ---
 
@@ -28,7 +28,7 @@ Everything is saved as a **template** you can switch between instantly. Jump fro
 - **Session management** — Independent conversation histories, archiving, and session switching
 - **Semantic memory** — FAISS vector search surfaces relevant context from long conversations (50+ messages)
 - **Auto-extraction** — AI analyzes roleplay conversations and suggests character detail updates
-- **Templates** — 9 built-in presets (roleplay + utility); save, import, and export your own
+- **Worlds** — 9 built-in presets (roleplay + utility); save your current settings as a named world and switch between them
 - **Model management** — Browse, download, and switch Ollama models; HuggingFace GGUF support
 - **User persona** — Define yourself once and carry your identity across all worlds
 - **Dark theme** — Montserrat font, teal accent (#4db8a8), designed for long sessions
@@ -78,11 +78,11 @@ Open **http://localhost:5173** and pick a template to get started.
 
 ## How It Works
 
-1. **Pick a template** — Choose a built-in world (Fantasy Tavern, Cyberpunk Hacker, Detective Noir...) or a utility assistant (Code Reviewer, Research Assistant, Expert Tutor...), or create your own from scratch.
+1. **Pick a world** — Choose a built-in world (Fantasy Tavern, Cyberpunk Hacker, Detective Noir...) or a utility assistant (Code Reviewer, Research Assistant, Expert Tutor...), or create your own from scratch.
 
 2. **Customize** — Edit the world settings, characters, rules, and narrative style. For utility mode, configure the assistant identity, guardrails, and formatting.
 
-3. **Chat** — Start a session and interact. The system prompt is built automatically from your template settings. Streaming responses appear token by token.
+3. **Chat** — Start a session and interact. The system prompt is built automatically from your world settings. Streaming responses appear token by token.
 
 4. **Memory kicks in** — After 50+ messages, semantic memory activates. The system retrieves relevant earlier context so the conversation stays coherent over long sessions.
 

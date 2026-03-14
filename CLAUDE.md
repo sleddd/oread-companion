@@ -59,8 +59,16 @@ sendMessage() → build system prompt (promptBuilder.js) → load characters if 
 2. Joi schema in `middleware/validation.js` + `validate(schema)` middleware
 3. Register router in `server.js` if new file
 
+## User Templates (Worlds)
+Users can save current settings as a named "world" template. Stored as JSON in `data/templates/user/` (gitignored).
+- **Save**: `POST /api/templates/user` → generates ID from name, handles collisions (`-2`, `-3`)
+- **Delete**: `DELETE /api/templates/user/:id`
+- **List**: `GET /api/templates` returns both `defaults/` and `user/` templates, tagged with `isUserTemplate: true/false`
+- Frontend: `saveAsTemplate()` / `deleteTemplate()` in Zustand store, `templateAPI.js` for API calls
+- UI: "Save as World" button below settings tabs, "Choose Your World" section in Mode tab
+
 ## Gotchas
-1. `/api/templates/active` must be registered before `/:id` — otherwise "active" is captured as a template ID
+1. `/api/templates/active` and `/api/templates/user` must be registered before `/:id` — otherwise they are captured as template IDs
 2. **Zustand selectors** — always `useStore((s) => s.x)`, never destructure the whole store
 3. **`validate()` uses `stripUnknown: true`** — new setting fields must be in `settingsSchema` or silently removed
 4. **`TextField.onChange`** receives the value directly, not the event

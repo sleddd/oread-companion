@@ -36,7 +36,7 @@ Technical reference for the Oread chat application. For a general overview, see 
 │   └── characters.js            # Character file management
 │
 ├── controllers/
-│   ├── templateController.js    # Default templates + active settings CRUD
+│   ├── templateController.js    # Default + user templates, active settings CRUD
 │   └── characterController.js   # Character file I/O
 │
 ├── services/
@@ -57,7 +57,8 @@ Technical reference for the Oread chat application. For a general overview, see 
 │   ├── characters/defaults/     # Built-in character templates
 │   └── templates/
 │       ├── active.json          # Active settings (written by app)
-│       └── defaults/            # 9 preset templates
+│       ├── defaults/            # 9 preset templates
+│       └── user/                # User-created worlds (gitignored)
 │
 ├── __tests__/                   # Vitest + Supertest test suite
 │
@@ -67,7 +68,7 @@ Technical reference for the Oread chat application. For a general overview, see 
         ├── store/useStore.js    # Zustand store
         ├── pages/               # ChatPage, Settings
         ├── components/          # ui, chat, settings, session, layout, model
-        ├── utils/               # API clients, promptBuilder, characterAPI, etc.
+        ├── utils/               # API clients, promptBuilder, templateAPI, etc.
         └── data/                # defaultSettings, templates helper
 ```
 
@@ -172,8 +173,10 @@ App.jsx
 | POST | `/api/chat` | Chat with streaming (SSE stream) |
 | GET | `/api/csrf-token` | Get CSRF token |
 | GET/PUT/DELETE | `/api/templates/active` | Load / save / reset settings |
-| GET | `/api/templates` | List all preset templates |
-| GET | `/api/templates/:id` | Get a single preset template |
+| GET | `/api/templates` | List all templates (defaults + user worlds) |
+| GET | `/api/templates/:id` | Get a single template |
+| POST | `/api/templates/user` | Save current settings as a user world |
+| DELETE | `/api/templates/user/:id` | Delete a user world |
 | POST/GET/PUT/DELETE | `/api/sessions` | Session management |
 | POST/GET | `/api/sessions/:id/messages` | Session messages |
 | POST | `/api/memory/embed` | Create embeddings (background) |
@@ -202,6 +205,13 @@ App.jsx
 ---
 
 ## Version History
+
+### v3.4.0 (2026-03-14) — Save as World
+- User-created world templates: save current settings as a named world, browse alongside defaults, delete
+- `GET /api/templates` returns merged default + user templates with `isUserTemplate` flag
+- "Choose Your World" UI with grouped dropdown (My Worlds above Templates)
+- "Save as World" action bar below settings tabs
+- User worlds stored in `data/templates/user/` (gitignored)
 
 ### v3.3.0 (2026-03-13) — Memory & dependency cleanup
 - Replaced `langchainRAG.js` with leaner `embeddingService.js`

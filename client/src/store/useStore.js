@@ -23,7 +23,6 @@ const useStore = create((set, get) => ({
     // Immediate save to localStorage
     try {
       localStorage.setItem('ollama-chat-settings', JSON.stringify(newSettings));
-      console.log('✅ Settings saved to localStorage');
     } catch (error) {
       console.error('Failed to save to localStorage:', error);
     }
@@ -35,10 +34,8 @@ const useStore = create((set, get) => ({
 
     saveTimeoutRef = setTimeout(async () => {
       try {
-        console.log('💾 Saving settings to backend...');
         const result = await saveSettingsAPI(newSettings);
         if (result.success) {
-          console.log('✅ Settings saved to backend successfully');
           set({ isSavingSettings: false, lastSaved: new Date() });
         } else {
           console.error('❌ Failed to save settings to backend:', result.error);
@@ -59,7 +56,6 @@ const useStore = create((set, get) => ({
       if (localSettings) {
         const parsed = JSON.parse(localSettings);
         set({ settings: parsed });
-        console.log('✅ Settings loaded from localStorage');
       }
 
       // Then try backend API (authoritative — always overrides localStorage)
@@ -70,7 +66,6 @@ const useStore = create((set, get) => ({
         try {
           localStorage.setItem('ollama-chat-settings', JSON.stringify(result.settings));
         } catch (_) {}
-        console.log('✅ Settings loaded from backend API');
       }
     } catch (error) {
       console.error('Failed to load settings:', error);
@@ -209,35 +204,33 @@ const useStore = create((set, get) => ({
     // Build system prompt using settings and current mode
     const systemPrompt = buildSystemPrompt(settingsWithCharacters, modeForThisMessage);
 
-    // Log system prompt for debugging
-    console.log('📋 System Prompt Generated:');
-    console.log('━'.repeat(50));
-    console.log(systemPrompt);
-    console.log('━'.repeat(50));
-    console.log('Mode:', modeForThisMessage);
-    console.log('Temperature:', state.settings.general.temperature);
-    console.log('Top P:', state.settings.general.topP);
-    console.log('Max Tokens:', state.settings.general.maxTokens);
-
     // Determine model (use settings default if set, otherwise use selected model)
     const modelToUse = state.settings.general.selectedModel || selectedModel;
 
     try {
+      const chatPayload = {
+        model: modelToUse,
+        messages: conversationHistory
+          .map(m => ({ role: m.role, content: m.content }))
+          .filter(m => m.content !== ''),
+        systemPrompt: systemPrompt,
+        temperature: state.settings.general.temperature,
+        topP: state.settings.general.topP,
+        maxTokens: state.settings.general.maxTokens,
+        sessionId: state.currentSessionId,
+        settings: state.settings
+      };
       const response = await apiFetch('/api/chat', {
         method: 'POST',
-        body: JSON.stringify({
-          model: modelToUse,
-          messages: conversationHistory
-            .map(m => ({ role: m.role, content: m.content }))
-            .filter(m => m.content !== ''),
-          systemPrompt: systemPrompt,
-          temperature: state.settings.general.temperature,
-          topP: state.settings.general.topP,
-          maxTokens: state.settings.general.maxTokens,
-          sessionId: state.currentSessionId,
-          settings: state.settings
-        })
+        body: JSON.stringify(chatPayload)
       });
+
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        console.error('❌ /api/chat error:', JSON.stringify(errBody, null, 2));
+        set({ isSending: false });
+        return;
+      }
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -335,6 +328,25 @@ const useStore = create((set, get) => ({
 
   // Download model
   downloadModel: async (modelName) => {
+    // Normalize HuggingFace URLs to the hf.co shorthand Ollama expects
+    let normalizedName = modelName.trim();
+
+    // Handle direct GGUF file URLs:
+    // https://huggingface.co/user/repo/resolve/main/file.gguf?download=true
+    // → hf.co/user/repo:file (without .gguf)
+    const resolveMatch = normalizedName.match(
+      /(?:https?:\/\/)?(?:huggingface\.co|hf\.co)\/([^/]+)\/([^/]+)\/resolve\/[^/]+\/([^/?#]+\.gguf)/i
+    );
+    if (resolveMatch) {
+      const [, user, repo, filename] = resolveMatch;
+      const tag = filename.replace(/\.gguf$/i, '');
+      normalizedName = `hf.co/${user}/${repo}:${tag}`;
+    } else {
+      normalizedName = normalizedName
+        .replace(/^https?:\/\//, '')
+        .replace(/^huggingface\.co\//, 'hf.co/');
+    }
+
     set({
       isDownloading: true,
       downloadProgress: { progress: 0, status: 'Starting download...', message: '' }
@@ -343,7 +355,7 @@ const useStore = create((set, get) => ({
     try {
       const response = await apiFetch('/api/models/pull', {
         method: 'POST',
-        body: JSON.stringify({ modelName })
+        body: JSON.stringify({ modelName: normalizedName })
       });
 
       const reader = response.body.getReader();
@@ -708,25 +720,18 @@ const useStore = create((set, get) => ({
   setCurrentPage: (page) => set({ currentPage: page }),
 
   // ==========================================
-  // INITIALIZATION
+  // TEMPLATES
   // ==========================================
-  initialize: async () => {
-    const store = get();
-    await store.loadSettings();
-
-    // Load templates from backend
+  fetchTemplates: async () => {
     try {
       const templates = await loadTemplates();
       set({ templates });
-      console.log(`✅ Loaded ${templates.length} templates from backend`);
 
-      // Auto-apply default assistant template if no template is set
-      // (First-time user experience)
-      if (!get().settings.meta.templateId && get().settings.mode === 'normal') {
-        console.log('🎯 No template set - auto-applying default assistant template');
+      // Auto-apply default assistant template if no template is set (first-time UX)
+      if (!get().settings.meta?.templateId && get().settings.mode === 'normal') {
         const assistantTemplate = templates.find(t => t.id === 'expert-tutor');
         if (assistantTemplate) {
-          store.setSettings({
+          get().setSettings({
             ...assistantTemplate.settings,
             meta: {
               ...assistantTemplate.settings.meta,
@@ -739,7 +744,15 @@ const useStore = create((set, get) => ({
     } catch (error) {
       console.error('❌ Failed to load templates:', error);
     }
+  },
 
+  // ==========================================
+  // INITIALIZATION
+  // ==========================================
+  initialize: async () => {
+    const store = get();
+    await store.loadSettings();
+    await store.fetchTemplates();
     await store.checkHealth();
     await store.fetchModels();
     await store.loadSessions();

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useStore from '../store/useStore';
 import ModelSelector from '../components/model/ModelSelector';
 import ModelDownloader from '../components/model/ModelDownloader';
@@ -33,7 +33,15 @@ export default function Settings() {
   const downloadModel = useStore((state) => state.downloadModel);
   const isDownloading = useStore((state) => state.isDownloading);
   const downloadProgress = useStore((state) => state.downloadProgress);
-  const [activeTab, setActiveTab] = useState('mode'); // 'mode', 'roleplay', 'utility', 'persona', 'general', 'sessions', 'integrations'
+  const templates = useStore((state) => state.templates);
+  const fetchTemplates = useStore((state) => state.fetchTemplates);
+  const [activeTab, setActiveTab] = useState('mode');
+
+  // Re-fetch if initialize() hadn't finished loading templates when this page mounted
+  useEffect(() => {
+    if (templates.length === 0) fetchTemplates();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 'mode', 'roleplay', 'utility', 'persona', 'general', 'sessions', 'integrations'
 
   // Format last saved time
   const getLastSavedText = () => {
@@ -52,21 +60,13 @@ export default function Settings() {
       // Copy default character to user folder if this is a roleplay template
       if (template.settings.mode === 'roleplay' && template.settings.roleplay.singleCharacterRef) {
         const characterId = template.settings.roleplay.singleCharacterRef;
-        console.log(`📋 Copying default character "${characterId}" to user folder...`);
-        const result = await copyDefaultCharacterToUser(characterId);
-
-        if (result) {
-          console.log(`✅ Character "${characterId}" copied successfully`);
-        } else {
-          console.warn(`⚠️ Failed to copy character "${characterId}"`);
-        }
+        await copyDefaultCharacterToUser(characterId);
 
         // Small delay to ensure file system has time to flush
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       // Apply template settings
-      console.log(`📋 Applying template: ${template.id}`);
       setSettings({
         ...template.settings,
         meta: {
@@ -75,7 +75,6 @@ export default function Settings() {
           lastModified: new Date().toISOString()
         }
       });
-      console.log(`✅ Template applied, singleCharacterRef:`, template.settings.roleplay?.singleCharacterRef);
     } else {
       // Clear template - reset to defaults but keep user's customizations
       setSettings({

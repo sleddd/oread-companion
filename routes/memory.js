@@ -1,5 +1,5 @@
 import express from 'express';
-import langchainRAG from '../services/langchainRAG.js';
+import embeddingService from '../services/embeddingService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { validate, validateUUID, embedSchema, memorySearchSchema } from '../middleware/validation.js';
 
@@ -10,7 +10,7 @@ router.post('/embed', validate(embedSchema), asyncHandler(async (req, res) => {
   const { sessionId, messages } = req.body;
 
   // Run embedding in background (don't await)
-  langchainRAG.addDocuments(sessionId, messages)
+  embeddingService.addDocuments(sessionId, messages)
     .then(result => {
       console.log(`✅ Embedded ${result.embedded} messages for session ${sessionId}`);
     })
@@ -25,8 +25,8 @@ router.post('/embed', validate(embedSchema), asyncHandler(async (req, res) => {
 router.post('/search', validate(memorySearchSchema), asyncHandler(async (req, res) => {
   const { sessionId, query, topK } = req.body;
 
-  const queryVector = await langchainRAG.embeddings.embedQuery(query);
-  const results = await langchainRAG.searchVectors(sessionId, queryVector, topK);
+  const queryVector = await embeddingService.embeddings.embedQuery(query);
+  const results = await embeddingService.searchVectors(sessionId, queryVector, topK);
 
   res.json({
     success: true,
@@ -38,7 +38,7 @@ router.post('/search', validate(memorySearchSchema), asyncHandler(async (req, re
 
 // Get embedding status for session
 router.get('/status/:sessionId', validateUUID('sessionId'), asyncHandler(async (req, res) => {
-  const stats = await langchainRAG.getIndexStats(req.params.sessionId);
+  const stats = await embeddingService.getIndexStats(req.params.sessionId);
   res.json({ success: true, sessionId: req.params.sessionId, ...stats });
 }));
 

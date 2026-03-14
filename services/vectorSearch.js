@@ -1,125 +1,85 @@
-import crypto from 'crypto';
-import database from './database.js';
+import { FaissStore } from '@langchain/community/vectorstores/faiss';
+import { OllamaEmbeddings } from '@langchain/ollama';
+import { Document } from '@langchain/core/documents';
+import path from 'path';
+import fs from 'fs/promises';
+import { CONFIG } from '../config/index.js';
 
-class SQLiteVectorSearch {
+const VECTORS_DIR = path.join(process.cwd(), 'data', 'vectors');
+
+class FaissVectorSearch {
   constructor() {
-    this.SLIDING_WINDOW = 100; // Only search last 100 messages
+    this.embeddings = new OllamaEmbeddings({
+      baseUrl: CONFIG.OLLAMA_URL,
+      model: CONFIG.OLLAMA_EMBED_MODEL
+    });
   }
 
-  async search(sessionId, queryVector, topK = 5, useWindow = true, embeddingModel = 'nomic-embed-text') {
-    // 1. Load vectors with SLIDING WINDOW (prevents memory issues)
-    // CRITICAL: Filter by model to prevent "hallucination soup" from model drift
-    const query = useWindow
-      ? `
-        SELECT mv.id, mv.message_id, mv.vector, mv.dimension, m.timestamp
-        FROM message_vectors mv
-        JOIN messages m ON mv.message_id = m.id
-        WHERE mv.session_id = ?
-          AND mv.model = ?
-        ORDER BY m.timestamp DESC
-        LIMIT ?
-      `
-      : `
-        SELECT id, message_id, vector, dimension
-        FROM message_vectors
-        WHERE session_id = ?
-          AND model = ?
-      `;
+  _sessionDir(sessionId) {
+    return path.join(VECTORS_DIR, sessionId);
+  }
 
-    const params = useWindow
-      ? [sessionId, embeddingModel, this.SLIDING_WINDOW]
-      : [sessionId, embeddingModel];
-    const rows = await database.all(query, params);
-
-    if (rows.length === 0) {
-      return [];
+  async _indexExists(sessionId) {
+    try {
+      await fs.access(path.join(this._sessionDir(sessionId), 'faiss.index'));
+      return true;
+    } catch {
+      return false;
     }
+  }
 
-    // 2. Deserialize BLOBs to float32 arrays (optimized)
-    const vectors = rows.map(row => ({
-      id: row.id,
-      messageId: row.message_id,
-      vector: this.blobToFloat32Array(row.vector, row.dimension)
+  /**
+   * Semantic search using a pre-computed query vector.
+   * Returns [{ messageId, content, role, timestamp, score }]
+   */
+  async search(sessionId, queryVector, topK = 5) {
+    if (!await this._indexExists(sessionId)) return [];
+
+    const store = await FaissStore.load(this._sessionDir(sessionId), this.embeddings);
+    const results = await store.similaritySearchVectorWithScore(queryVector, topK);
+
+    return results.map(([doc, distance]) => ({
+      messageId: doc.metadata.messageId,
+      content: doc.pageContent,
+      role: doc.metadata.role,
+      timestamp: doc.metadata.timestamp,
+      score: 1 / (1 + distance)  // L2 distance → similarity proxy (0–1)
+    }));
+  }
+
+  /**
+   * Embed and index messages into the session's FAISS store.
+   * messages: [{ id, content, role, timestamp }]
+   */
+  async addDocuments(sessionId, messages) {
+    if (messages.length === 0) return;
+
+    const docs = messages.map(msg => new Document({
+      pageContent: msg.content,
+      metadata: { messageId: msg.id, role: msg.role, timestamp: msg.timestamp }
     }));
 
-    // 3. Calculate cosine similarity for each
-    const similarities = vectors.map(v => ({
-      messageId: v.messageId,
-      score: this.cosineSimilarity(queryVector, v.vector)
-    }));
+    const dir = this._sessionDir(sessionId);
+    await fs.mkdir(dir, { recursive: true });
 
-    // 4. Sort and return top K
-    return similarities
-      .sort((a, b) => b.score - a.score)
-      .slice(0, topK);
-  }
-
-  cosineSimilarity(a, b) {
-    let dotProduct = 0;
-    let normA = 0;
-    let normB = 0;
-
-    for (let i = 0; i < a.length; i++) {
-      dotProduct += a[i] * b[i];
-      normA += a[i] * a[i];
-      normB += b[i] * b[i];
+    if (await this._indexExists(sessionId)) {
+      const store = await FaissStore.load(dir, this.embeddings);
+      await store.addDocuments(docs);
+      await store.save(dir);
+    } else {
+      const store = await FaissStore.fromDocuments(docs, this.embeddings);
+      await store.save(dir);
     }
-
-    const denominator = Math.sqrt(normA) * Math.sqrt(normB);
-    if (denominator === 0) return 0;
-    return dotProduct / denominator;
   }
 
-  float32ArrayToBlob(arr) {
-    // Ensure 4-byte alignment for optimal performance
-    const float32 = new Float32Array(arr);
-    return Buffer.from(float32.buffer, float32.byteOffset, float32.byteLength);
-  }
-
-  blobToFloat32Array(blob, dimension) {
-    // OPTIMIZATION: Use Buffer directly, ensure 4-byte alignment
-    // Avoids extra memory copying for large arrays
-    if (blob.byteLength !== dimension * 4) {
-      throw new Error(`Invalid vector size: expected ${dimension * 4} bytes, got ${blob.byteLength}`);
-    }
-
-    // CRITICAL: Node.js Buffers are often slices of larger ArrayBuffers
-    // We MUST use byteOffset to avoid reading neighboring memory
-    // See: https://nodejs.org/api/buffer.html#buffer_buf_buffer
-    return new Float32Array(
-      blob.buffer,
-      blob.byteOffset,  // REQUIRED: prevents reading wrong memory region
-      dimension         // length in elements (not bytes)
-    );
-  }
-
-  async verifyVectorChecksum(messageId) {
-    // Verify vector integrity (use during migration or maintenance)
-    const row = await database.get(
-      'SELECT vector, dimension, checksum FROM message_vectors WHERE message_id = ?',
-      [messageId]
-    );
-
-    if (!row) {
-      throw new Error(`Vector not found for message: ${messageId}`);
-    }
-
-    const vector = this.blobToFloat32Array(row.vector, row.dimension);
-    const calculatedChecksum = this.calculateChecksum(vector);
-
-    if (calculatedChecksum !== row.checksum) {
-      throw new Error(`Checksum mismatch for message ${messageId}: expected ${row.checksum}, got ${calculatedChecksum}`);
-    }
-
-    return true;
-  }
-
-  calculateChecksum(vector) {
-    // Verify vector integrity
-    const hash = crypto.createHash('sha256');
-    hash.update(this.float32ArrayToBlob(vector));
-    return hash.digest('hex').substring(0, 16); // First 16 chars
+  /**
+   * Total number of vectors indexed for a session.
+   */
+  async getDocumentCount(sessionId) {
+    if (!await this._indexExists(sessionId)) return 0;
+    const store = await FaissStore.load(this._sessionDir(sessionId), this.embeddings);
+    return store.index.ntotal;
   }
 }
 
-export default new SQLiteVectorSearch();
+export default new FaissVectorSearch();

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-vi.mock('../../services/langchainRAG.js', () => ({
+vi.mock('../../services/embeddingService.js', () => ({
   default: {
     addDocuments: vi.fn().mockResolvedValue({ embedded: 2 }),
     embeddings: { embedQuery: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]) },
@@ -12,7 +12,7 @@ vi.mock('../../services/langchainRAG.js', () => ({
 }));
 
 import memoryRouter from '../../routes/memory.js';
-import langchainRAG from '../../services/langchainRAG.js';
+import embeddingService from '../../services/embeddingService.js';
 import { errorHandler } from '../../middleware/errorHandler.js';
 
 function createApp() {
@@ -85,7 +85,7 @@ describe('POST /embed', () => {
       .expect(200);
 
     await new Promise(r => setImmediate(r));
-    expect(langchainRAG.addDocuments).toHaveBeenCalledWith(VALID_UUID, expect.any(Array));
+    expect(embeddingService.addDocuments).toHaveBeenCalledWith(VALID_UUID, expect.any(Array));
   });
 });
 
@@ -93,7 +93,7 @@ describe('POST /search', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('returns 200 with results for a valid query', async () => {
-    langchainRAG.searchVectors.mockResolvedValueOnce({
+    embeddingService.searchVectors.mockResolvedValueOnce({
       results: [{ messageId: 'msg1', score: 0.9 }],
     });
 
@@ -112,7 +112,7 @@ describe('POST /search', () => {
       .send({ sessionId: VALID_UUID, query: 'hello' })
       .expect(200);
 
-    expect(langchainRAG.searchVectors).toHaveBeenCalledWith(VALID_UUID, expect.any(Array), 5);
+    expect(embeddingService.searchVectors).toHaveBeenCalledWith(VALID_UUID, expect.any(Array), 5);
   });
 
   it('returns 400 when query is missing', async () => {
@@ -150,7 +150,7 @@ describe('GET /status/:sessionId', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('returns 200 with stats for a valid UUID', async () => {
-    langchainRAG.getIndexStats.mockResolvedValueOnce({ total: 10, embedded: 8 });
+    embeddingService.getIndexStats.mockResolvedValueOnce({ total: 10, embedded: 8 });
 
     const res = await request(createApp())
       .get(`/status/${VALID_UUID}`)

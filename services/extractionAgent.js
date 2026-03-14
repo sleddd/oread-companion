@@ -1,5 +1,5 @@
 import { ChatOllama } from '@langchain/ollama';
-import mcpClient from './mcpClient.js';
+import database from './database.js';
 
 class ExtractionAgentService {
   constructor() {
@@ -16,7 +16,7 @@ class ExtractionAgentService {
   async analyzeConversation(sessionId, settings) {
     try {
       // Get last 10 messages
-      const messages = await mcpClient.querySQLite(
+      const messages = await database.all(
         `SELECT * FROM messages
          WHERE session_id = ?
          ORDER BY timestamp DESC
@@ -182,7 +182,7 @@ If no new information found, return empty array: []`;
    */
   async shouldRunAnalysis(sessionId) {
     try {
-      const result = await mcpClient.querySQLite(
+      const result = await database.all(
         'SELECT message_count FROM sessions WHERE id = ?',
         [sessionId]
       );

@@ -1,6 +1,6 @@
 # Oread Chat Interface
 
-A modern, full-stack chat interface for local Ollama models with advanced memory, character roleplay, and session management. Built with Node.js, Express, React, Vite, LangChain, and SQLite.
+A modern, full-stack chat interface for local Ollama models with session management, character roleplay, and memory. Built with Node.js, Express, React, Vite, and SQLite.
 
 > **Note**: This app is in active development. It is fully functional but not yet exhaustively bug-tested. Use at your own risk.
 
@@ -11,14 +11,13 @@ A modern, full-stack chat interface for local Ollama models with advanced memory
 ### 💬 Chat
 - Real-time token-by-token streaming responses
 - Session-based conversations with independent histories
-- Automatic RAG activation for long conversations (>50 messages)
 - Mode toggle commands: `/chat` (utility) and `/play` (roleplay)
 
-### 🧠 Memory & RAG
+### 🧠 Memory
 - All messages persisted to SQLite
-- Semantic search using Ollama `nomic-embed-text` embeddings stored as SQLite BLOBs
-- Sliding window of 100 vectors for efficient in-memory cosine similarity search
-- Hybrid context: recent 20 messages + top 5 semantically matched from history
+- Semantic search using Ollama `nomic-embed-text` embeddings (FAISS index per session)
+- Hybrid context for long sessions: recent 20 messages + top 5 semantically matched from history
+- Activates automatically for sessions with >50 messages when Memory is enabled
 
 ### 🎭 Roleplay & Characters
 - Single or multi-character roleplay modes
@@ -52,7 +51,7 @@ A modern, full-stack chat interface for local Ollama models with advanced memory
    ```bash
    ollama serve
    ```
-3. **Embedding model** (required for memory/RAG):
+3. **Embedding model** (required for memory):
    ```bash
    ollama pull nomic-embed-text
    ```
@@ -89,10 +88,10 @@ Open **http://localhost:5173**
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/health` | Health check (Ollama, DB, MCP) |
+| GET | `/api/health` | Health check (Ollama, DB) |
 | GET | `/api/models` | List available models |
 | POST | `/api/models/pull` | Download model (SSE stream) |
-| POST | `/api/chat` | Chat with streaming + RAG (SSE stream) |
+| POST | `/api/chat` | Chat with streaming (SSE stream) |
 | GET | `/api/csrf-token` | Get CSRF token |
 | GET/PUT/DELETE | `/api/templates/active` | Load / save / reset settings |
 | GET | `/api/templates` | List all preset templates |
@@ -118,7 +117,7 @@ Open **http://localhost:5173**
 ├── routes/
 │   ├── templates.js             # Template + active settings endpoints
 │   ├── sessions.js              # Session CRUD + messages
-│   ├── memory.js                # RAG/embedding endpoints
+│   ├── memory.js                # Embedding endpoints
 │   └── characters.js            # Character file management
 │
 ├── controllers/
@@ -128,9 +127,8 @@ Open **http://localhost:5173**
 ├── services/
 │   ├── ollama.js                # Ollama API wrapper
 │   ├── database.js              # SQLite + WAL mode setup
-│   ├── mcpClient.js             # MCP client
-│   ├── langchainRAG.js          # RAG orchestration + embeddings
-│   ├── vectorSearch.js          # In-memory cosine similarity
+│   ├── embeddingService.js      # Embeddings + semantic search (FAISS)
+│   ├── vectorSearch.js          # FAISS vector index per session
 │   └── extractionAgent.js       # Character detail extraction
 │
 ├── middleware/
@@ -138,31 +136,24 @@ Open **http://localhost:5173**
 │   ├── validation.js            # Joi schemas for all endpoints
 │   └── errorHandler.js          # Async error wrapper, 404, global handler
 │
-├── mcp-servers/
-│   └── settings-tools-server.js # Custom MCP for character extraction
-│
-├── scripts/
-│   ├── migrate-vectors-to-sqlite.js
-│   └── verify-vector-integrity.js
-│
 ├── data/
-│   ├── chat.db                  # SQLite (sessions, messages, vectors)
+│   ├── chat.db                  # SQLite (sessions, messages)
+│   ├── vectors/                 # FAISS index files per session
 │   ├── characters/defaults/     # Built-in character templates
-│   ├── personality-system/      # Trait definition JSON files
 │   └── templates/
 │       ├── active.json          # Active settings (written by app)
 │       └── defaults/            # 9 preset templates
 │
-├── __tests__/                   # 120 tests (vitest + supertest)
+├── __tests__/                   # Vitest + Supertest test suite
 │
 └── client/                      # React frontend
     └── src/
         ├── App.jsx
         ├── store/useStore.js    # Zustand store
         ├── pages/               # ChatPage, Settings
-        ├── components/          # 31 components (ui, chat, settings, session, layout, model)
+        ├── components/          # ui, chat, settings, session, layout, model
         ├── utils/               # API clients, promptBuilder, characterAPI, etc.
-        └── data/                # defaultSettings, templates helper, personality data
+        └── data/                # defaultSettings, templates helper
 ```
 
 ---
@@ -176,15 +167,16 @@ User types message
   ↓
 Frontend (Zustand store) → POST /api/chat
   ↓
-Backend checks: session > 50 messages?
-  ├─ YES → RAG: recent 20 + top 5 semantic matches (SQLite vectors)
-  └─ NO  → Full history
+Backend: session > 50 messages + memory enabled?
+  ├─ YES → hybrid context: recent 20 + top 5 semantic matches (FAISS)
+  └─ NO  → full history from client
   ↓
 Stream response via SSE
   ↓
+Save messages to SQLite (before res.end())
+  ↓
 Background (non-blocking):
-  ├─ Save messages to SQLite
-  ├─ Generate embeddings → store as BLOBs in message_vectors
+  ├─ Generate embeddings → FAISS index (data/vectors/:sessionId/)
   └─ Roleplay + every 5 msgs → run extraction agent → store suggestions
 ```
 
@@ -227,9 +219,7 @@ App.jsx
 
 **Red "Disconnected" status** — Run `ollama serve`, then refresh.
 
-**RAG not activating** — Pull `nomic-embed-text`, enable Memory in Settings → General, session needs >50 messages.
-
-**MCP errors on startup** — Check Node.js v18+, verify `data/chat.db` is writable.
+**Memory not activating** — Pull `nomic-embed-text`, enable Memory in Settings → General, session needs >50 messages.
 
 **Chat not working** — Select a model in Settings → Model, ensure a session is active.
 
@@ -244,40 +234,37 @@ App.jsx
 | Backend runtime | Node.js (ES Modules) |
 | API framework | Express.js |
 | AI / LLM | Ollama (`ollama` npm package) |
-| RAG / embeddings | LangChain + Ollama `nomic-embed-text` |
+| Embeddings | Ollama `nomic-embed-text` + FAISS |
 | Database | SQLite (WAL mode) via `sqlite` + `sqlite3` |
-| Vector storage | SQLite BLOBs + in-memory cosine similarity |
-| MCP | `@modelcontextprotocol/sdk` |
 | Security | Helmet, express-rate-limit, Joi, CSRF tokens |
 | Frontend framework | React 19 |
 | Build tool | Vite |
 | State management | Zustand |
 | Styling | SCSS modules |
-| Testing | Vitest + Supertest (120 tests) |
+| Testing | Vitest + Supertest |
 
 ---
 
 ## Version History
 
+### v3.3.0 (2026-03-13) — Memory & dependency cleanup
+- Replaced `langchainRAG.js` with leaner `embeddingService.js`
+- Removed unused `mcpClient.js` and MCP architecture
+- Removed `data/personality-system/` trait JSON files
+- FAISS vector store retained for semantic search
+
 ### v3.2.0 (2026-03-13) — Settings → Templates consolidation
 - Settings storage unified under `data/templates/active.json`
 - `/api/settings` removed; settings now served via `/api/templates/active`
 - Removed unused services: `sessionSecurity.js`, `personalitySystem.js`
-- Removed unused MCP server: `vector-store-server.js` (FAISS era)
 - Removed unused middleware: `auth.js`, `authLimiter`
-- Removed `data/settings/` legacy directory
-- Test suite updated to cover new template routes
 
-### v3.1.0 (2026-03-12) — SQLite Vector Storage
-- Replaced FAISS with SQLite BLOB vector storage
-- WAL mode for concurrent access
-- Pure JavaScript cosine similarity (no C++ dependencies)
-- Sliding window (100 vectors), SHA-256 checksums
+### v3.1.0 (2026-03-12) — SQLite + FAISS Vector Storage
+- FAISS vector index per session for semantic search
+- WAL mode for concurrent SQLite access
 
 ### v3.0.0 (2026-03-11) — Memory System
-- LangChain RAG with session management
-- MCP architecture for data access
-- Auto-extraction with user approval workflow
+- Session-scoped semantic memory with auto-extraction
 - Infinite scroll message history
 
 ### v2.1.0 (2026-03-11) — Oread Design System

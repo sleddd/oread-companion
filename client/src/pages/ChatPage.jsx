@@ -30,7 +30,6 @@ export default function ChatPage() {
   useEffect(() => {
     // If session changed and we have a session ID, reload messages
     if (currentSessionId && currentSessionId !== lastLoadedSessionId.current) {
-      console.log(`📝 ChatPage: Session changed to ${currentSessionId}, reloading messages...`);
       lastLoadedSessionId.current = currentSessionId;
       loadMessageHistory(currentSessionId);
     }

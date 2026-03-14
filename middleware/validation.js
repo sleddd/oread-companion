@@ -7,11 +7,9 @@ import Joi from 'joi';
 // Chat message validation
 export const chatSchema = Joi.object({
   model: Joi.string()
-    .pattern(/^[a-zA-Z0-9._:/-]+$/)
     .max(200)
     .required()
     .messages({
-      'string.pattern.base': 'Model name contains invalid characters',
       'any.required': 'Model is required'
     }),
 
@@ -52,11 +50,11 @@ export const chatSchema = Joi.object({
 // Model pull validation
 export const modelPullSchema = Joi.object({
   modelName: Joi.string()
-    .pattern(/^([a-z0-9-]+|hf\.co\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+)$/)
+    .pattern(/^[^\s;&|`$<>\\]+$/)
     .max(200)
     .required()
     .messages({
-      'string.pattern.base': 'Invalid model name format. Use Ollama library name or HuggingFace format (hf.co/user/model)',
+      'string.pattern.base': 'Model name must not contain shell special characters',
       'any.required': 'Model name is required'
     })
 });

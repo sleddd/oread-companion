@@ -1,6 +1,5 @@
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import mcpClient from '../services/mcpClient.js';
 import database from '../services/database.js';
 import { validate, validateUUID, sessionCreateSchema, sessionUpdateSchema } from '../middleware/validation.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
@@ -12,8 +11,8 @@ router.post('/', validate(sessionCreateSchema), asyncHandler(async (req, res) =>
   const { name, character_name, character_mode, mode, settings_snapshot } = req.body;
   const sessionId = uuidv4();
 
-  // Insert session via MCP with validated data
-  await mcpClient.executeSQLite(
+  // Insert session with validated data
+  await database.run(
     `INSERT INTO sessions (id, name, character_name, character_mode, mode, settings_snapshot)
      VALUES (?, ?, ?, ?, ?, ?)`,
     [
@@ -27,7 +26,7 @@ router.post('/', validate(sessionCreateSchema), asyncHandler(async (req, res) =>
   );
 
   // Get the created session
-  const sessions = await mcpClient.querySQLite(
+  const sessions = await database.all(
     'SELECT * FROM sessions WHERE id = ?',
     [sessionId]
   );
@@ -47,7 +46,7 @@ router.get('/', asyncHandler(async (req, res) => {
   const parsedOffset = Math.max(parseInt(offset) || 0, 0);
   const isArchived = archived === 'true' ? 1 : 0;
 
-  const sessions = await mcpClient.querySQLite(
+  const sessions = await database.all(
     `SELECT * FROM sessions
      WHERE archived = ?
      ORDER BY updated_at DESC
@@ -55,7 +54,7 @@ router.get('/', asyncHandler(async (req, res) => {
     [isArchived, parsedLimit, parsedOffset]
   );
 
-  const countResult = await mcpClient.querySQLite(
+  const countResult = await database.all(
     'SELECT COUNT(*) as count FROM sessions WHERE archived = ?',
     [isArchived]
   );
@@ -72,7 +71,7 @@ router.get('/', asyncHandler(async (req, res) => {
 
 // Get session by ID
 router.get('/:id', validateUUID('id'), asyncHandler(async (req, res) => {
-  const sessions = await mcpClient.querySQLite(
+  const sessions = await database.all(
     'SELECT * FROM sessions WHERE id = ?',
     [req.params.id]
   );
@@ -135,12 +134,12 @@ router.put('/:id', validateUUID('id'), validate(sessionUpdateSchema), asyncHandl
   updates.push('updated_at = CURRENT_TIMESTAMP');
   params.push(req.params.id);
 
-  await mcpClient.executeSQLite(
+  await database.run(
     `UPDATE sessions SET ${updates.join(', ')} WHERE id = ?`,
     params
   );
 
-  const sessions = await mcpClient.querySQLite(
+  const sessions = await database.all(
     'SELECT * FROM sessions WHERE id = ?',
     [req.params.id]
   );
@@ -160,7 +159,7 @@ router.put('/:id', validateUUID('id'), validate(sessionUpdateSchema), asyncHandl
 
 // Delete session
 router.delete('/:id', validateUUID('id'), asyncHandler(async (req, res) => {
-  await mcpClient.executeSQLite(
+  await database.run(
     'DELETE FROM sessions WHERE id = ?',
     [req.params.id]
   );
@@ -234,7 +233,7 @@ router.get('/:id/messages', validateUUID('id'), asyncHandler(async (req, res) =>
   const parsedLimit = Math.min(parseInt(limit) || 50, 100); // Max 100
   const parsedOffset = Math.max(parseInt(offset) || 0, 0);
 
-  const messages = await mcpClient.querySQLite(
+  const messages = await database.all(
     `SELECT * FROM messages
      WHERE session_id = ?
      ORDER BY timestamp ASC
@@ -242,7 +241,7 @@ router.get('/:id/messages', validateUUID('id'), asyncHandler(async (req, res) =>
     [req.params.id, parsedLimit, parsedOffset]
   );
 
-  const countResult = await mcpClient.querySQLite(
+  const countResult = await database.all(
     'SELECT COUNT(*) as count FROM messages WHERE session_id = ?',
     [req.params.id]
   );

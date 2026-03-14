@@ -1,3 +1,0 @@
-{
-  "note": "SQLite and filesystem operations use direct access instead of MCP for better performance and simplicity"
-}

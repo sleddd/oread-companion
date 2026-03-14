@@ -55,25 +55,20 @@ export default function CharacterEditor({ characterRef, onCharacterRefChange, mo
   useEffect(() => {
     async function loadCharacterData() {
       if (!characterRef) {
-        console.log('📝 CharacterEditor: No characterRef, using empty character');
         setCharacter(EMPTY_CHARACTER);
         return;
       }
 
-      console.log(`📝 CharacterEditor: Loading character "${characterRef}"...`);
       setIsLoading(true);
       try {
         const charFile = await getCharacter(characterRef);
         if (charFile) {
           const charData = characterFileToSettings(charFile);
           setCharacter(charData);
-          console.log(`✅ Character "${characterRef}" loaded successfully:`, charData.name);
         } else {
-          console.warn(`⚠️ Character "${characterRef}" not found, using empty template`);
           setCharacter({...EMPTY_CHARACTER, name: characterRef});
         }
       } catch (error) {
-        console.error(`❌ Error loading character "${characterRef}":`, error);
         setCharacter(EMPTY_CHARACTER);
       } finally {
         setIsLoading(false);

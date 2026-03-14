@@ -18,10 +18,8 @@
 - **Framework**: Express.js
 - **AI Integration**: Ollama (`ollama` npm package)
 - **Communication**: REST API + Server-Sent Events (SSE)
-- **Memory/RAG**: LangChain + Ollama nomic-embed-text embeddings
+- **Memory**: Ollama `nomic-embed-text` embeddings + FAISS vector index per session
 - **Database**: SQLite with WAL mode (`sqlite` + `sqlite3`)
-- **Vector Store**: SQLite BLOBs with in-memory cosine similarity (no FAISS)
-- **MCP**: `@modelcontextprotocol/sdk`
 - **Security**: Helmet, express-rate-limit, Joi, CSRF tokens, express-session
 
 ### Frontend
@@ -46,7 +44,7 @@
 ├── routes/
 │   ├── templates.js                 # GET /active, PUT /active, DELETE /active, GET /, GET /:id
 │   ├── sessions.js                  # Session CRUD + message endpoints
-│   ├── memory.js                    # RAG embed/search/status endpoints
+│   ├── memory.js                    # Embed/search/status endpoints
 │   └── characters.js                # Character file management endpoints
 │
 ├── controllers/
@@ -56,9 +54,8 @@
 ├── services/
 │   ├── ollama.js                    # listModels(), pullModel(), chat()
 │   ├── database.js                  # SQLite init, WAL mode, schema creation
-│   ├── mcpClient.js                 # MCP client — querySQLite(), executeSQLite()
-│   ├── langchainRAG.js              # shouldUseRAG(), queryWithRAG(), addDocuments()
-│   ├── vectorSearch.js              # cosineSearch(), sliding window (100 vectors)
+│   ├── embeddingService.js          # shouldUseRAG(), queryWithRAG(), addDocuments(), searchVectors()
+│   ├── vectorSearch.js              # FAISS index per session — search(), addDocuments(), getDocumentCount()
 │   └── extractionAgent.js           # analyzeConversation(), shouldRunAnalysis()
 │
 ├── middleware/
@@ -69,13 +66,9 @@
 │   └── errorHandler.js              # asyncHandler(), errorHandler, notFoundHandler
 │
 ├── mcp-servers/
-│   └── settings-tools-server.js     # Custom MCP server for character extraction tools
+│   └── settings-tools-server.js     # Custom MCP server (standalone, not used by main app)
 │
-├── scripts/
-│   ├── migrate-vectors-to-sqlite.js # One-time FAISS → SQLite migration
-│   └── verify-vector-integrity.js   # SHA-256 checksum verification
-│
-├── __tests__/                       # 120 tests (vitest + supertest)
+├── __tests__/                       # Vitest + Supertest test suite
 │   ├── services/database.test.js
 │   ├── services/vectorSearch.test.js
 │   ├── routes/memory.test.js
@@ -85,20 +78,18 @@
 │   └── controllers/characterController.test.js
 │
 ├── data/
-│   ├── chat.db                      # SQLite (sessions, messages, message_vectors)
+│   ├── chat.db                      # SQLite (sessions, messages)
+│   ├── vectors/                     # FAISS index files (one directory per session)
 │   ├── characters/
 │   │   ├── defaults/                # Built-in character JSON files
 │   │   └── [user characters]        # User-created/copied character files
-│   ├── personality-system/          # 8 trait-category JSON files (read by frontend)
 │   └── templates/
 │       ├── active.json              # Active settings (written by templateController)
 │       └── defaults/                # 9 preset template JSON files (read-only)
 │
-├── docs/                            # Architecture and reference docs
 ├── CLAUDE.md                        # This file
 ├── README.md                        # User documentation
 ├── SECURITY.md                      # Security configuration guide
-├── mcp-config.json                  # MCP server configuration note
 └── package.json                     # Backend dependencies
 
 client/
@@ -107,7 +98,7 @@ client/
 │   ├── main.jsx                     # React bootstrap
 │   │
 │   ├── store/
-│   │   └── useStore.js              # Zustand store (700+ lines)
+│   │   └── useStore.js              # Zustand store
 │   │
 │   ├── pages/
 │   │   ├── ChatPage.jsx             # Chat view with sidebar and session management
@@ -136,14 +127,12 @@ client/
 │   │   ├── characterConverter.js    # Character file ↔ settings format conversion
 │   │   ├── promptBuilder.js         # buildSystemPrompt(), detectModeToggle()
 │   │   ├── imageProcessor.js        # Avatar resize to 512×512, base64 conversion
-│   │   ├── personalitySystemLoader.js  # Loads trait JSON files for prompt injection
 │   │   ├── settingsImportExport.js  # exportSettings(), importSettings(), copySettingsToClipboard()
 │   │   └── settingsValidation.js    # validateSettings(), sanitizeSettings()
 │   │
 │   ├── data/
 │   │   ├── defaultSettings.js       # DEFAULT_SETTINGS structure
-│   │   ├── templates.js             # loadTemplates() → GET /api/templates
-│   │   └── personality-system/      # 8 trait JSON files (imported by personalitySystemLoader)
+│   │   └── templates.js             # loadTemplates() → GET /api/templates
 │   │
 │   └── styles/
 │       ├── global.scss              # SCSS variables, global styles
@@ -163,10 +152,10 @@ client/
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/csrf-token` | Issue CSRF token (stored in session, returned as JSON) |
-| GET | `/api/health` | Check Ollama, SQLite, MCP status |
+| GET | `/api/health` | Check Ollama + SQLite status |
 | GET | `/api/models` | List available Ollama models |
 | POST | `/api/models/pull` | Download model — SSE stream |
-| POST | `/api/chat` | Streaming chat with optional RAG — SSE stream |
+| POST | `/api/chat` | Streaming chat with optional semantic memory — SSE stream |
 
 ### Templates (`routes/templates.js`)
 
@@ -278,13 +267,6 @@ timestamp TEXT, model TEXT, system_prompt_hash TEXT, token_count INTEGER,
 embedded INTEGER DEFAULT 0, embedding_id TEXT, extracted_data TEXT, extraction_status TEXT
 ```
 
-### message_vectors
-```sql
-id TEXT PRIMARY KEY, message_id TEXT, session_id TEXT,
-vector BLOB,          -- Float32Array (768 dims × 4 bytes = 3KB)
-dimension INTEGER, model TEXT, model_version TEXT, checksum TEXT, created_at TEXT
-```
-
 ---
 
 ## Zustand Store (`useStore.js`)
@@ -300,7 +282,6 @@ State is organized into sections. Key ones:
 | UI | `currentPage` | `setCurrentPage()` |
 | Sessions | `currentSessionId`, `chatSessions`, `sessionsLoading` | `createSession()`, `loadSessions()`, `selectSession()`, `deleteSession()` |
 | History | `messageHistory`, `historyLoading`, `historyHasMore` | `loadMessageHistory()` |
-| RAG | `vectorContext`, `contextLoading` | `loadVectorContext()` |
 | Extraction | `extractedSuggestions`, `extractionLoading` | `analyzeForUpdates()`, `applyExtractedUpdates()` |
 | Characters | loaded character data | `loadCharactersForPrompt()` |
 | Init | `initialized` | `initialize()` |
@@ -323,8 +304,8 @@ Load characters if needed (characterAPI + characterConverter)
   ↓
 POST /api/chat { model, messages, systemPrompt, temperature, topP, maxTokens, sessionId, settings }
   ↓
-Backend: should use RAG? (session > 50 messages)
-  ├─ YES → langchainRAG: recent 20 + top 5 semantic (vectorSearch cosine similarity)
+Backend: session > 50 messages + memory enabled?
+  ├─ YES → embeddingService: recent 20 + top 5 semantic (FAISS)
   └─ NO  → full message history
   ↓
 ollamaService.chat() → SSE stream
@@ -334,7 +315,7 @@ Save user + assistant messages to SQLite (before res.end())
 res.end()
   ↓
 Background (fire-and-forget):
-  ├─ langchainRAG.addDocuments() → nomic-embed-text → BLOB in message_vectors
+  ├─ embeddingService.addDocuments() → nomic-embed-text → FAISS index
   └─ If roleplay: extractionAgent.shouldRunAnalysis() every 5 msgs
       → analyzeConversation() → store proposed_updates in messages table
 ```
@@ -394,9 +375,6 @@ All functions call `/api/templates/active`:
 ### `characterAPI.js`
 - `getCharacter(id)`, `saveCharacter(id, data)`, `deleteCharacter(id)`
 - `copyDefaultCharacterToUser(id)` — copies from defaults to user folder
-
-### `personalitySystemLoader.js`
-Loads the 8 trait category JSON files from `client/src/data/personality-system/` and provides them to `promptBuilder.js` for injection into system prompts.
 
 ---
 
@@ -485,8 +463,7 @@ Vite proxies all `/api/*` requests to `localhost:3001` in development.
 6. **Settings are stored as a template** — `GET /api/templates/active` returns `{ success, settings }`, not the full template wrapper
 7. **Active template `character_name`** in sessions refers to `singleCharacterRef` (character file ID), not an inline name
 8. **SSE parsing** — always check `line.startsWith('data: ')` before parsing
-9. **Vector BLOBs** — stored as Float32Array; use `buffer.byteOffset` when converting for memory safety
-10. **WAL mode** — SQLite WAL files (`.db-shm`, `.db-wal`) are normal; don't delete them while the app is running
+9. **WAL mode** — SQLite WAL files (`.db-shm`, `.db-wal`) are normal; don't delete them while the app is running
 
 ---
 
@@ -527,4 +504,4 @@ Vite proxies all `/api/*` requests to `localhost:3001` in development.
 ---
 
 **Last Updated**: 2026-03-13
-**Version**: 3.2.0
+**Version**: 3.3.0

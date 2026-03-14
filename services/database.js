@@ -50,6 +50,10 @@ class DatabaseService {
   }
 
   async createTables() {
+    // Migration: drop old SQLite vector table (vectors now stored in FAISS files)
+    await this.db.exec(`DROP TABLE IF EXISTS message_vectors;`);
+    await this.db.exec(`UPDATE messages SET embedded = 0, embedding_id = NULL WHERE embedded = 1;`);
+
     // Sessions table
     await this.db.exec(`
       CREATE TABLE IF NOT EXISTS sessions (
@@ -88,23 +92,6 @@ class DatabaseService {
     `);
 
 
-    // Message vectors table (NEW - replaces FAISS files)
-    await this.db.exec(`
-      CREATE TABLE IF NOT EXISTS message_vectors (
-        id TEXT PRIMARY KEY,
-        message_id TEXT NOT NULL,
-        session_id TEXT NOT NULL,
-        vector BLOB NOT NULL,
-        dimension INTEGER NOT NULL,
-        model TEXT NOT NULL,
-        model_version TEXT,
-        checksum TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
-        FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-      );
-    `);
-
     // Create indexes
     await this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_messages_session
@@ -121,24 +108,9 @@ class DatabaseService {
       ON sessions(updated_at DESC);
     `);
 
-    // Indexes for message_vectors table
-    await this.db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_vectors_session
-      ON message_vectors(session_id);
-    `);
-
-    await this.db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_vectors_message
-      ON message_vectors(message_id);
-    `);
-
-    await this.db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_vectors_model
-      ON message_vectors(model, model_version);
-    `);
   }
 
-  // Helper methods for compatibility with mcpClient API
+  // Helper methods
   async all(sql, params = []) {
     if (!this.db) {
       throw new Error('Database not initialized');

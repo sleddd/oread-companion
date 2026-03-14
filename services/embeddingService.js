@@ -1,20 +1,16 @@
 import { ChatOllama, OllamaEmbeddings } from '@langchain/ollama';
-import mcpClient from './mcpClient.js';
 import vectorSearch from './vectorSearch.js';
 import database from './database.js';
-import crypto from 'crypto';
 import { CONFIG } from '../config/index.js';
 
 class LangChainRAGService {
   constructor() {
-    // Initialize Ollama LLM
     this.llm = new ChatOllama({
       baseUrl: CONFIG.OLLAMA_URL,
       model: CONFIG.OLLAMA_CHAT_MODEL,
       temperature: 0.7
     });
 
-    // Initialize embeddings model
     this.embeddings = new OllamaEmbeddings({
       baseUrl: CONFIG.OLLAMA_URL,
       model: CONFIG.OLLAMA_EMBED_MODEL
@@ -27,48 +23,30 @@ class LangChainRAGService {
   async queryWithRAG(sessionId, userMessage, settings, model = CONFIG.OLLAMA_CHAT_MODEL) {
     try {
       // 1. Get recent messages (last 20)
-      const recentMessages = await mcpClient.querySQLite(
+      const recentMessages = await database.all(
         `SELECT * FROM messages
          WHERE session_id = ?
          ORDER BY timestamp DESC
          LIMIT 20`,
         [sessionId]
       );
-
-      // Reverse to get chronological order
       recentMessages.reverse();
 
-      // 2. Create embedding for user query
+      // 2. Embed the user query
       const queryVector = await this.embeddings.embedQuery(userMessage);
 
-      // 3. Semantic search for relevant context using SQLite vectors
+      // 3. Semantic search via FAISS
       let vectorResults = [];
       try {
-        const searchResults = await vectorSearch.search(
-          sessionId,
-          queryVector,
-          5,
-          true,
-          CONFIG.OLLAMA_EMBED_MODEL
-        );
-
-        // Load message content for each result
-        for (const result of searchResults) {
-          const message = await database.get(
-            'SELECT content, role, timestamp FROM messages WHERE id = ?',
-            [result.messageId]
-          );
-          if (message) {
-            vectorResults.push({
-              text: message.content,
-              role: message.role,
-              timestamp: message.timestamp,
-              score: result.score
-            });
-          }
-        }
+        const searchResults = await vectorSearch.search(sessionId, queryVector, 5);
+        vectorResults = searchResults.map(r => ({
+          text: r.content,
+          role: r.role,
+          timestamp: r.timestamp,
+          score: r.score
+        }));
       } catch (error) {
-        console.warn('Vector search failed (vectors may not exist yet):', error.message);
+        console.warn('Vector search failed:', error.message);
       }
 
       // 4. Build hybrid context
@@ -100,7 +78,6 @@ class LangChainRAGService {
   buildContext(recentMessages, vectorResults, settings) {
     const contextParts = [];
 
-    // Add vector search results as context (if any)
     if (vectorResults.length > 0) {
       contextParts.push('--- Relevant Past Context ---');
       vectorResults.forEach((result, idx) => {
@@ -109,7 +86,6 @@ class LangChainRAGService {
       contextParts.push('');
     }
 
-    // Add recent messages
     contextParts.push('--- Recent Conversation ---');
     recentMessages.forEach(msg => {
       contextParts.push(`${msg.role}: ${msg.content}`);
@@ -119,12 +95,10 @@ class LangChainRAGService {
   }
 
   /**
-   * Add documents to vector store (background embeddings)
-   * Now stores vectors directly in SQLite instead of FAISS
+   * Embed and index messages via FAISS (background job)
    */
   async addDocuments(sessionId, messages) {
     try {
-      // Filter out system messages and very short messages
       const documentsToEmbed = messages.filter(msg =>
         msg.role !== 'system' && msg.content.length > 20
       );
@@ -133,48 +107,16 @@ class LangChainRAGService {
         return { success: true, embedded: 0 };
       }
 
-      // Create embeddings for messages
-      const texts = documentsToEmbed.map(msg => msg.content);
-      const vectors = await this.embeddings.embedDocuments(texts);
+      await vectorSearch.addDocuments(sessionId, documentsToEmbed);
 
-      // Store vectors directly in SQLite
-      for (let i = 0; i < documentsToEmbed.length; i++) {
-        const msg = documentsToEmbed[i];
-        const vector = vectors[i];
-
-        // Calculate checksum
-        const checksum = vectorSearch.calculateChecksum(vector);
-
-        // Insert into message_vectors table
-        await database.run(`
-          INSERT INTO message_vectors (
-            id, message_id, session_id, vector, dimension,
-            model, model_version, checksum
-          )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT (id) DO NOTHING
-        `, [
-          crypto.randomUUID(),
-          msg.id,
-          sessionId,
-          vectorSearch.float32ArrayToBlob(vector),
-          vector.length,
-          CONFIG.OLLAMA_EMBED_MODEL,
-          '1.0',
-          checksum
-        ]);
-
-        // Mark message as embedded
+      for (const msg of documentsToEmbed) {
         await database.run(
           'UPDATE messages SET embedded = 1 WHERE id = ?',
           [msg.id]
         );
       }
 
-      return {
-        success: true,
-        embedded: documentsToEmbed.length
-      };
+      return { success: true, embedded: documentsToEmbed.length };
     } catch (error) {
       console.error('Add documents error:', error);
       throw error;
@@ -182,20 +124,15 @@ class LangChainRAGService {
   }
 
   /**
-   * Get index statistics for a session
-   * Now queries SQLite instead of FAISS
+   * Get vector index stats for a session
    */
   async getIndexStats(sessionId) {
     try {
-      const result = await database.get(
-        'SELECT COUNT(*) as count FROM message_vectors WHERE session_id = ?',
-        [sessionId]
-      );
-
+      const count = await vectorSearch.getDocumentCount(sessionId);
       return {
         success: true,
         session_id: sessionId,
-        document_count: result?.count || 0
+        document_count: count
       };
     } catch (error) {
       console.error('Get index stats error:', error);
@@ -209,10 +146,14 @@ class LangChainRAGService {
   }
 
   /**
-   * Estimate tokens (rough approximation)
+   * Search vectors for a pre-computed query embedding (used by memory route)
    */
+  async searchVectors(sessionId, queryVector, topK = 5) {
+    const results = await vectorSearch.search(sessionId, queryVector, topK);
+    return { results };
+  }
+
   estimateTokens(text) {
-    // Rough estimate: 1 token ≈ 4 characters
     return Math.ceil(text.length / 4);
   }
 
@@ -224,8 +165,7 @@ class LangChainRAGService {
       return false;
     }
 
-    // Check message count
-    const countResult = await mcpClient.querySQLite(
+    const countResult = await database.all(
       'SELECT COUNT(*) as count FROM messages WHERE session_id = ?',
       [sessionId]
     );
@@ -235,10 +175,10 @@ class LangChainRAGService {
   }
 
   /**
-   * Build message array for chat (without RAG)
+   * Get recent messages for non-RAG chat
    */
   async getRecentMessages(sessionId, limit = 20) {
-    const messages = await mcpClient.querySQLite(
+    const messages = await database.all(
       `SELECT * FROM messages
        WHERE session_id = ?
        ORDER BY timestamp DESC
@@ -246,7 +186,6 @@ class LangChainRAGService {
       [sessionId, limit]
     );
 
-    // Reverse to get chronological order
     return messages.reverse();
   }
 }

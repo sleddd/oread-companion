@@ -8,9 +8,8 @@ import { CONFIG, validateConfig } from './config/index.js';
 
 // Services
 import ollamaService from './services/ollama.js';
-import mcpClient from './services/mcpClient.js';
 import database from './services/database.js';
-import langchainRAG from './services/langchainRAG.js';
+import embeddingService from './services/embeddingService.js';
 import extractionAgent from './services/extractionAgent.js';
 import { initializeCharacters } from './controllers/characterController.js';
 
@@ -89,9 +88,6 @@ async function initializeServices() {
     // Initialize database
     await database.initialize();
 
-    // Initialize MCP clients
-    await mcpClient.initialize();
-
     // Initialize character system
     initializeCharacters();
 
@@ -143,9 +139,6 @@ app.get('/api/health', asyncHandler(async (req, res) => {
     health.services.database = 'error';
     health.status = 'error';
   }
-
-  // Check MCP
-  health.services.mcp = mcpClient.clients ? 'ok' : 'not_initialized';
 
   const statusCode = health.status === 'ok' ? 200 : 503;
   res.status(statusCode).json(health);
@@ -200,7 +193,7 @@ app.post('/api/chat', validate(chatSchema), asyncHandler(async (req, res) => {
   try {
     // Check if we should use RAG
     if (sessionId && settings) {
-      const shouldUseRAG = await langchainRAG.shouldUseRAG(sessionId, settings);
+      const shouldUseRAG = await embeddingService.shouldUseRAG(sessionId, settings);
 
       if (shouldUseRAG) {
         console.log('🧠 Using RAG for context retrieval');
@@ -209,10 +202,10 @@ app.post('/api/chat', validate(chatSchema), asyncHandler(async (req, res) => {
         const userMessage = messages[messages.length - 1]?.content || '';
 
         // Get RAG context
-        const ragResult = await langchainRAG.queryWithRAG(sessionId, userMessage, settings, model);
+        const ragResult = await embeddingService.queryWithRAG(sessionId, userMessage, settings, model);
 
         // Use only recent messages from RAG
-        const recentMessages = await langchainRAG.getRecentMessages(sessionId, 20);
+        const recentMessages = await embeddingService.getRecentMessages(sessionId, 20);
         messagesToSend = recentMessages.map(m => ({
           role: m.role,
           content: m.content
@@ -277,7 +270,7 @@ app.post('/api/chat', validate(chatSchema), asyncHandler(async (req, res) => {
       const userMsg = messages[messages.length - 1];
       const assistantMsg = { role: 'assistant', content: assistantResponse };
 
-      langchainRAG.addDocuments(sessionId, [
+      embeddingService.addDocuments(sessionId, [
         { ...userMsg, id: userMsgId },
         { ...assistantMsg, id: assistantMsgId }
       ]).catch(err => console.error('Embedding error:', err));
@@ -331,7 +324,7 @@ async function saveMessageToSession(sessionId, message) {
 
 async function saveExtractionResults(sessionId, proposedUpdates) {
   try {
-    await mcpClient.executeSQLite(
+    await database.run(
       `UPDATE messages
        SET extracted_data = ?,
            extraction_status = 'pending'
@@ -367,7 +360,6 @@ async function gracefulShutdown(signal) {
 
       try {
         await database.close();
-        await mcpClient.close();
         console.log('✅ Graceful shutdown complete');
         process.exit(0);
       } catch (error) {

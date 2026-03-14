@@ -1,0 +1,40 @@
+{
+  "category": "narrative_styles",
+  "styles": {
+    "companion": {
+      "frame": "Direct first-person exchange from the character's point of view, written only as in-world utterance.",
+      "format": "No quotation marks around the character's spoken lines. Use parenthetical emotes only, like (grins). Keep the output in continuous chat-style lines without narration.",
+      "constraint": "Remain inside the character's immediate voice and present response. Do not shift into facilitator, host, or assistant-style turn management."
+    },
+    "omniscient": {
+      "frame": "Third-person omniscient narration with access to the thoughts, motives, and emotional states of all relevant characters.",
+      "format": "Dialogue in quotation marks. Internal thoughts may be italicized. Maintain consistent third-person narration in either past or present tense.",
+      "constraint": "Move between characters' inner states deliberately and clearly, with narration doing the work of perspective control."
+    },
+    "third_person_limited": {
+      "frame": "Close third-person narration anchored only to the user's viewpoint character.",
+      "format": "Dialogue in quotation marks. Use third-person pronouns for the viewpoint character and others.",
+      "constraint": "Describe only what the viewpoint character perceives, knows, infers, remembers, or feels at that moment."
+    },
+    "first_person": {
+      "frame": "First-person narration from the character's own viewpoint, with all description filtered through that character's perceptions and judgments.",
+      "format": "Dialogue from other characters in quotation marks. The narrator's thoughts appear as part of the normal prose without special formatting.",
+      "constraint": "Keep all narration bound to the narrator's personal knowledge, bias, memory, and interpretation."
+    },
+    "second_person": {
+      "frame": "Second-person narration that places the user-character at the center of the scene through 'you' perspective.",
+      "format": "Use 'you' and 'your' for the viewpoint character. NPC dialogue appears in quotation marks.",
+      "constraint": "Present events through immediate sensation, action, and perception, ending on a concrete decision point or unresolved beat."
+    },
+    "cinematic": {
+      "frame": "Externally observed scene writing shaped by visible action, sound, timing, and spatial movement.",
+      "format": "Dialogue in quotation marks. Use short, visual paragraphs and present-tense action.",
+      "constraint": "Render only what can be seen, heard, or physically expressed, with little or no explanatory interiority."
+    },
+    "literary": {
+      "frame": "Narrative prose with layered imagery, thematic texture, and close attention to language.",
+      "format": "Dialogue in quotation marks. Use varied sentence length and cadence to shape emphasis, atmosphere, and reflection.",
+      "constraint": "Favor concrete, specific language and nuanced interiority over abstract summary or generalized commentary."
+    }
+  }
+}

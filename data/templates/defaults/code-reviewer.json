@@ -11,9 +11,7 @@
         "settingLore": "",
         "openingScene": "",
         "narratorVoice": "",
-        "pacing": "",
-        "hardRules": [],
-        "turnLogic": ""
+        "hardRules": []
       },
       "characterMode": "single",
       "singleCharacterRef": "",

@@ -18,8 +18,6 @@ import Button from '../components/ui/Button';
 import Dropdown from '../components/ui/Dropdown';
 import { exportSettings, importSettings, copySettingsToClipboard } from '../utils/settingsImportExport';
 import { DEFAULT_SETTINGS } from '../data/defaultSettings';
-import { copyDefaultCharacterToUser } from '../utils/characterAPI';
-
 export default function Settings() {
   // Get state and actions from Zustand store
   const settings = useStore((state) => state.settings);
@@ -57,16 +55,7 @@ export default function Settings() {
   // Handle template selection
   const handleTemplateSelect = async (template) => {
     if (template) {
-      // Copy default character to user folder if this is a roleplay template
-      if (template.settings.mode === 'roleplay' && template.settings.roleplay.singleCharacterRef) {
-        const characterId = template.settings.roleplay.singleCharacterRef;
-        await copyDefaultCharacterToUser(characterId);
-
-        // Small delay to ensure file system has time to flush
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-
-      // Apply template settings
+      // Apply template settings (character data is now inline in the template)
       setSettings({
         ...template.settings,
         meta: {

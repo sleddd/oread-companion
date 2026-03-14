@@ -75,59 +75,52 @@ const useStore = create((set, get) => ({
   // Load characters from files for prompt building
   loadCharactersForPrompt: async (settings) => {
     try {
-      const { getCharacter } = await import('../utils/characterAPI.js');
-      const { characterFileToSettings } = await import('../utils/characterConverter.js');
-
       const settingsCopy = { ...settings };
 
-      // Load single character
-      if (settings.roleplay.characterMode === 'single' && settings.roleplay.singleCharacterRef) {
-        const charFile = await getCharacter(settings.roleplay.singleCharacterRef);
-        if (charFile) {
-          const charData = characterFileToSettings(charFile);
+      // Single character mode
+      if (settings.roleplay.characterMode === 'single') {
+        // Use inline character data from template if available
+        if (settings.roleplay.character) {
           settingsCopy.roleplay = {
             ...settingsCopy.roleplay,
-            _loadedCharacters: [charData]
+            _loadedCharacters: [settings.roleplay.character]
           };
-        } else {
-          console.warn(`⚠️ Character "${settings.roleplay.singleCharacterRef}" not found. Prompt will use character reference name only.`);
-          // Fallback: create minimal character with just the name
-          settingsCopy.roleplay = {
-            ...settingsCopy.roleplay,
-            _loadedCharacters: [{
-              name: settings.roleplay.singleCharacterRef || 'Assistant',
-              role: '',
-              knowledgeSkills: '',
-              hobbiesInterests: '',
-              thingsToAvoid: '',
-              backstory: '',
-              inventory: '',
-              traits: {}
-            }]
-          };
+        } else if (settings.roleplay.singleCharacterRef) {
+          // Fall back to API for user-created characters
+          const { getCharacter } = await import('../utils/characterAPI.js');
+          const { characterFileToSettings } = await import('../utils/characterConverter.js');
+          const charFile = await getCharacter(settings.roleplay.singleCharacterRef);
+          if (charFile) {
+            settingsCopy.roleplay = {
+              ...settingsCopy.roleplay,
+              _loadedCharacters: [characterFileToSettings(charFile)]
+            };
+          } else {
+            settingsCopy.roleplay = {
+              ...settingsCopy.roleplay,
+              _loadedCharacters: [{
+                name: settings.roleplay.singleCharacterRef || 'Assistant',
+                role: '', knowledgeSkills: '', hobbiesInterests: '',
+                thingsToAvoid: '', backstory: '', inventory: '', traits: {}
+              }]
+            };
+          }
         }
       }
 
-      // Load multiple characters
+      // Multi character mode
       if (settings.roleplay.characterMode === 'multi' && settings.roleplay.multipleCharacterRefs?.length > 0) {
+        const { getCharacter } = await import('../utils/characterAPI.js');
+        const { characterFileToSettings } = await import('../utils/characterConverter.js');
         const loadedChars = [];
         for (const charRef of settings.roleplay.multipleCharacterRefs) {
           const charFile = await getCharacter(charRef);
           if (charFile) {
-            const charData = characterFileToSettings(charFile);
-            loadedChars.push(charData);
+            loadedChars.push(characterFileToSettings(charFile));
           } else {
-            console.warn(`⚠️ Character "${charRef}" not found. Skipping.`);
-            // Add minimal fallback character
             loadedChars.push({
-              name: charRef,
-              role: '',
-              knowledgeSkills: '',
-              hobbiesInterests: '',
-              thingsToAvoid: '',
-              backstory: '',
-              inventory: '',
-              traits: {}
+              name: charRef, role: '', knowledgeSkills: '', hobbiesInterests: '',
+              thingsToAvoid: '', backstory: '', inventory: '', traits: {}
             });
           }
         }
@@ -201,8 +194,9 @@ const useStore = create((set, get) => ({
     // Load characters from files before building system prompt
     const settingsWithCharacters = await state.loadCharactersForPrompt(state.settings);
 
-    // Build system prompt using settings and current mode
-    const systemPrompt = buildSystemPrompt(settingsWithCharacters, modeForThisMessage);
+    // Build system prompt — include opening scene only on first message of session
+    const isFirstMessage = state.messages.length === 0;
+    const systemPrompt = buildSystemPrompt(settingsWithCharacters, modeForThisMessage, isFirstMessage);
     console.log('[System Prompt]', systemPrompt);
 
     // Determine model (use settings default if set, otherwise use selected model)
@@ -318,8 +312,16 @@ const useStore = create((set, get) => ({
 
         // Auto-select first model if none selected
         const state = get();
-        if (!state.selectedModel && chatModels.length > 0) {
-          set({ selectedModel: chatModels[0].name });
+        const firstModel = chatModels.length > 0 ? chatModels[0].name : null;
+        if (!state.selectedModel && firstModel) {
+          set({ selectedModel: firstModel });
+        }
+        // Also set in settings if no model configured there
+        if (!state.settings.general.selectedModel && firstModel) {
+          state.setSettings({
+            ...state.settings,
+            general: { ...state.settings.general, selectedModel: firstModel }
+          });
         }
       }
     } catch (error) {

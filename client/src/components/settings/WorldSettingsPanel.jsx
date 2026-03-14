@@ -30,6 +30,19 @@ export default function WorldSettingsPanel({ settings, onChange }) {
           rows={4}
         />
       </div>
+
+      <div className="world-settings-panel__field">
+        <label className="world-settings-panel__label">Opening Scene</label>
+        <p className="world-settings-panel__hint">
+          Describe the initial scene and atmosphere to establish the starting point.
+        </p>
+        <TextArea
+          value={world.openingScene}
+          onChange={(value) => handleFieldChange('openingScene', value)}
+          placeholder="Set the opening scene. Where does the story begin? What is happening?"
+          rows={4}
+        />
+      </div>
     </div>
   );
 }

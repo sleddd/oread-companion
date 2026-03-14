@@ -1,251 +1,153 @@
-// System prompt builder with variable mapping
+// System prompt builder — structured template format
 // AUTO-GENERATED prompts - not shown to user
 
 import { getCharacterTraitDefinitions, buildPersonalityGuidance } from './personalitySystemLoader.js';
+import { getNarrativeStyle } from './narrativeSystemLoader.js';
 
 /**
- * Build system prompt from settings using variable mapping
- * @param {Object} settings - User settings object
- * @param {String} activeMode - Current active mode ('roleplay' or 'normal')
- * @returns {String} Generated system prompt
+ * Build system prompt from settings
  */
-export function buildSystemPrompt(settings, activeMode = null) {
-  // Use activeMode if provided (for /chat and /play commands), otherwise use settings.mode
+export function buildSystemPrompt(settings, activeMode = null, isFirstMessage = false) {
   const mode = activeMode || settings.mode;
 
   if (mode === 'roleplay') {
-    return buildRoleplayPrompt(settings);
+    return buildRoleplayPrompt(settings, isFirstMessage);
   } else {
     return buildUtilityPrompt(settings);
   }
 }
 
 /**
- * Build roleplay mode system prompt with variable mapping
+ * Build roleplay mode system prompt using the Optimized "Discourse/Conduct" Template
  */
-function buildRoleplayPrompt(settings) {
+function buildRoleplayPrompt(settings, isFirstMessage) {
   const { roleplay, userPersona } = settings;
-  const { world, characterMode, singleCharacterRef, multipleCharacterRefs, _loadedCharacters } = roleplay;
+  const { world, characterMode, _loadedCharacters, userCustomContext } = roleplay;
 
+  // 1. Resolve Character (Ensuring universal "The Character" framing)
+  const mainCharacter = _loadedCharacters?.[0] || { name: 'The Character' };
+  const identity = [mainCharacter.age, mainCharacter.gender, mainCharacter.species].filter(Boolean).join(', ');
+
+  // 2. Resolve Narrative Style (default to companion)
+  const narrativeStyle = getNarrativeStyle(world.narratorVoice || 'companion');
+
+  // 3. Build Personality Traits (The Discourse/Conduct Engine)
+  let traitsText = '';
+  if (mainCharacter.traits) {
+    const traitDefinitions = getCharacterTraitDefinitions(mainCharacter.traits);
+    traitsText = buildPersonalityGuidance(traitDefinitions); 
+    // Ensure buildPersonalityGuidance returns: "• Trait: [D: ...] [C: ...]"
+  }
+
+  // === ASSEMBLE TEMPLATE ===
   let prompt = '';
 
-  // === WORLD & NARRATIVE SECTION ===
-  if (world.settingLore) {
-    prompt += `**WORLD SETTING:**\n${world.settingLore}\n\n`;
+  prompt += `WORLD SETTING:\n${world.settingLore || 'Modern day, everyday life.'}\n\n`;
+
+  // Opening scene only on the first message of a session
+  if (isFirstMessage) {
+    const baseOpening = 'Lead with YOUR energy. Share a specific hypothetical or "3 AM shower thought."';
+    prompt += `OPENING SCENE:\n${world.openingScene || baseOpening}\n\n`;
   }
 
-  if (world.openingScene) {
-    prompt += `**OPENING SCENE:**\n${world.openingScene}\n\n`;
+  prompt += `PERSONALITY EXECUTION PROTOCOL:\nYou are playing the character defined in the CHARACTER CARD. To maintain consistency, follow these two logic tracks for every response:\n\n`;
+  prompt += `1. DISCOURSE: Your vocal texture. Use the Discourse field of active traits to guide word choice and tone.\n`;
+  prompt += `2. CONDUCT: Your behavioral logic. Use the Conduct field to determine how you react and push the scene forward.\n\n`;
+
+  if (narrativeStyle) {
+    prompt += `NARRATIVE FORMATTING:\nApply style constraints strictly:\n`;
+    prompt += `FRAME: ${narrativeStyle.frame}\nFORMAT: ${narrativeStyle.format}\nCONSTRAINT: ${narrativeStyle.constraint}\n\n`;
   }
 
-  if (world.narratorVoice) {
-    prompt += `**NARRATOR VOICE:**\nYou are the ${world.narratorVoice}. `;
-    prompt += `Maintain this narrative style throughout the conversation.\n\n`;
+  prompt += `CHARACTER CARD:\n`;
+  prompt += `NAME: ${mainCharacter.name}\n`;
+  if (identity) prompt += `IDENTITY: ${identity}\n`;
+  if (mainCharacter.role) prompt += `ROLE: ${mainCharacter.role}\n`;
+  if (mainCharacter.backstory) prompt += `BACKSTORY: ${mainCharacter.backstory}\n`;
+  if (mainCharacter.knowledgeSkills) prompt += `KNOWLEDGE/SKILLS: ${mainCharacter.knowledgeSkills}\n`;
+  if (mainCharacter.hobbiesInterests) prompt += `HOBBIES/INTERESTS: ${mainCharacter.hobbiesInterests}\n\n`;
 
-    // Auto-add emoting instructions for companion/chat narrative styles
-    const narrativeStyleLower = world.narratorVoice.toLowerCase();
-    const isCompanionStyle = narrativeStyleLower.includes('playful') ||
-                            narrativeStyleLower.includes('warm') ||
-                            narrativeStyleLower.includes('gentle') ||
-                            narrativeStyleLower.includes('serene') ||
-                            characterMode === 'single'; // All single-character modes get emoting
+  prompt += `PERSONALITY ENGINE (ACTIVE TRAITS):\nApply these logic tracks to all output:\n${traitsText}\n\n`;
 
-    if (isCompanionStyle) {
-      prompt += `**EMOTING STYLE:**\n`;
-      prompt += `Use parenthetical emoting to add expressiveness and personality to your responses. `;
-      prompt += `Emotes should feel natural and conversational, showing your reactions and gestures.\n\n`;
-      prompt += `Examples: (grins), (leans in), (laughs), (raises an eyebrow), (tilts head thoughtfully)\n\n`;
-      prompt += `Keep emotes brief, natural, and organic to the conversation flow. Don't overuse them - sprinkle them in where they add flavor and personality.\n\n`;
-    }
+  // Consolidate Filters into one block to avoid the "Avoid" vs "Filters" confusion
+  const bannedWords = userPersona.linguisticFilters?.bannedWords || [];
+  const bannedPhrases = userPersona.linguisticFilters?.bannedPhrases || [];
+  
+  prompt += `LINGUISTIC FILTERS (STRICT NEGATIVE CONSTRAINTS):\n`;
+  if (bannedWords.length > 0) prompt += `BANNED WORDS: ${bannedWords.join(', ')}.\n`;
+  if (bannedPhrases.length > 0) prompt += `BANNED PHRASES: ${bannedPhrases.join(', ')}.\n`;
+  prompt += `FORMATTING BANS: NO asterisks for actions. Use parenthetical emotes only. No performative hype or fake-nice toxic positivity.\n\n`;
+
+  prompt += `USER INFORMATION:\nNAME: ${userPersona.name || 'User'}\n`;
+  const contextParts = [userPersona.profession, userPersona.bio, userPersona.tastes?.interests].filter(Boolean);
+  if (contextParts.length > 0) prompt += `CONTEXT: ${contextParts.join('. ')}\n\n`;
+
+  // Use the dynamic logic for RAG vs Opening Scene
+  // RAG context always included if present; opening scene only on first message
+  const currentContext = userCustomContext || (isFirstMessage ? world.openingScene : null);
+  if (currentContext) {
+    prompt += `CURRENT CONTEXT (SCENE OR MEMORY):\n${currentContext}\n\n`;
   }
 
-  if (world.pacing) {
-    prompt += `**PACING & FLOW:**\n${world.pacing}\n\n`;
-  }
+  prompt += `MODE TOGGLE:\n/chat: Utility Mode | /play: Roleplay Mode`;
 
-  // Hard rules
-  if (world.hardRules && world.hardRules.length > 0) {
-    prompt += `**HARD RULES (NEVER VIOLATE):**\n`;
-    world.hardRules.forEach((rule, index) => {
-      prompt += `${index + 1}. ${rule}\n`;
-    });
-    prompt += `\n`;
-  }
-
-  if (world.turnLogic) {
-    prompt += `**TURN LOGIC:**\n${world.turnLogic}\n\n`;
-  }
-
-  // === CHARACTER SECTION ===
-  // Use _loadedCharacters if available (loaded from files), otherwise fall back to refs
-  if (characterMode === 'single') {
-    const character = _loadedCharacters?.[0] || { name: singleCharacterRef };
-    prompt += buildSingleCharacterSection(character);
-  } else {
-    const characters = _loadedCharacters || multipleCharacterRefs.map(ref => ({ name: ref }));
-    prompt += buildMultipleCharactersSection(characters);
-  }
-
-  // === USER PERSONA SECTION ===
-  prompt += buildUserPersonaSection(userPersona);
-
-  // === MODE TOGGLE INSTRUCTIONS ===
-  prompt += `\n**MODE TOGGLE:**\n`;
-  prompt += `- If the user sends the command "/chat", temporarily switch to Non-Roleplay/Utility mode for that response.\n`;
-  prompt += `- If the user sends the command "/play", return to Roleplay mode.\n`;
-  prompt += `- When in temporary utility mode, respond as a helpful assistant without roleplay elements.\n\n`;
-
-  return prompt.trim();
+  return prompt;
 }
 
 /**
- * Build single character section with variable mapping
- */
-function buildSingleCharacterSection(character) {
-  let section = `**MAIN CHARACTER:**\n`;
-
-  // Basic Identity
-  if (character.name) {
-    section += `Name: ${character.name}\n`;
-  }
-  if (character.age) {
-    section += `Age: ${character.age}\n`;
-  }
-  if (character.gender) {
-    section += `Gender: ${character.gender}\n`;
-  }
-  if (character.species) {
-    section += `Species: ${character.species}\n`;
-  }
-  if (character.role) {
-    section += `Role: ${character.role}\n`;
-  }
-
-  section += `\n`;
-
-  // Character Details
-  if (character.knowledgeSkills) {
-    section += `**Knowledge & Skills:**\n${character.knowledgeSkills}\n\n`;
-  }
-  if (character.hobbiesInterests) {
-    section += `**Hobbies/Interests:**\n${character.hobbiesInterests}\n\n`;
-  }
-  if (character.thingsToAvoid) {
-    section += `**Things They Avoid:**\n${character.thingsToAvoid}\n\n`;
-  }
-  if (character.backstory) {
-    section += `**Backstory:**\n${character.backstory}\n\n`;
-  }
-  if (character.inventory) {
-    section += `**Inventory:**\n${character.inventory}\n\n`;
-  }
-
-  // Personality System - Load detailed trait definitions and guidance
-  if (character.traits) {
-    const traitDefinitions = getCharacterTraitDefinitions(character.traits);
-    const personalityGuidance = buildPersonalityGuidance(traitDefinitions);
-
-    if (personalityGuidance) {
-      section += personalityGuidance;
-    }
-  }
-
-  return section;
-}
-
-/**
- * Build multiple characters section with variable mapping
- */
-function buildMultipleCharactersSection(characters) {
-  if (!characters || characters.length === 0) {
-    return `**CHARACTERS:**\nNo characters defined.\n\n`;
-  }
-
-  let section = `**CHARACTERS:**\n`;
-  section += `You may play any of the following characters as needed. The first character is the main character. Choose the most appropriate character based on the scene and user interaction.\n\n`;
-
-  characters.forEach((character, index) => {
-    const characterType = index === 0 ? 'MAIN CHARACTER' : 'SUPPORTING CHARACTER';
-    section += `--- ${characterType}: ${character.name || 'Unnamed'} ---\n`;
-
-    // Basic Identity
-    if (character.name) section += `Name: ${character.name}\n`;
-    if (character.age) section += `Age: ${character.age}\n`;
-    if (character.gender) section += `Gender: ${character.gender}\n`;
-    if (character.species) section += `Species: ${character.species}\n`;
-    if (character.role) section += `Role: ${character.role}\n`;
-    section += `\n`;
-
-    // Character Details
-    if (character.knowledgeSkills) {
-      section += `Knowledge & Skills: ${character.knowledgeSkills}\n`;
-    }
-    if (character.hobbiesInterests) {
-      section += `Hobbies/Interests: ${character.hobbiesInterests}\n`;
-    }
-    if (character.thingsToAvoid) {
-      section += `Things They Avoid: ${character.thingsToAvoid}\n`;
-    }
-    if (character.backstory) {
-      section += `Backstory: ${character.backstory}\n`;
-    }
-    if (character.inventory) {
-      section += `Inventory: ${character.inventory}\n`;
-    }
-
-    // Personality System - Load detailed trait definitions and guidance
-    if (character.traits) {
-      const traitDefinitions = getCharacterTraitDefinitions(character.traits);
-      const personalityGuidance = buildPersonalityGuidance(traitDefinitions);
-
-      if (personalityGuidance) {
-        section += `\n${personalityGuidance}`;
-      }
-    }
-
-    section += `\n`;
-  });
-
-  return section;
-}
-
-/**
- * Build utility/normal mode system prompt with variable mapping
+ * Build utility/normal mode system prompt
  */
 function buildUtilityPrompt(settings) {
   const { utility, userPersona } = settings;
   const { assistantIdentity, guardrails } = utility;
 
-  let prompt = '';
+  const sections = [];
 
-  // === ASSISTANT IDENTITY ===
   if (assistantIdentity.persona) {
-    prompt += `**YOUR IDENTITY:**\n${assistantIdentity.persona}\n\n`;
+    sections.push(`YOUR IDENTITY:\n${assistantIdentity.persona}`);
   }
-
   if (assistantIdentity.communicationStyle) {
-    prompt += `**COMMUNICATION STYLE:**\n${assistantIdentity.communicationStyle}\n\n`;
+    sections.push(`COMMUNICATION STYLE:\n${assistantIdentity.communicationStyle}`);
   }
-
-  // === GUARDRAILS ===
   if (guardrails.negativeConstraints) {
-    prompt += `**CONSTRAINTS (DO NOT):**\n${guardrails.negativeConstraints}\n\n`;
+    sections.push(`CONSTRAINTS (DO NOT):\n${guardrails.negativeConstraints}`);
   }
-
   if (guardrails.formattingPreferences) {
-    prompt += `**FORMATTING PREFERENCES:**\n${guardrails.formattingPreferences}\n\n`;
+    sections.push(`FORMATTING PREFERENCES:\n${guardrails.formattingPreferences}`);
   }
 
-  // === USER PERSONA SECTION ===
-  prompt += buildUserPersonaSection(userPersona);
+  // Linguistic filters
+  const bannedWords = userPersona.linguisticFilters?.bannedWords || [];
+  const bannedPhrases = userPersona.linguisticFilters?.bannedPhrases || [];
+  if (bannedWords.length > 0 || bannedPhrases.length > 0) {
+    let filters = `LINGUISTIC FILTERS (STRICT NEGATIVE CONSTRAINTS):\n`;
+    if (bannedWords.length > 0) filters += `BANNED WORDS: ${bannedWords.join(', ')}.\n`;
+    if (bannedPhrases.length > 0) filters += `BANNED PHRASES: ${bannedPhrases.join(', ')}.\n`;
+    sections.push(filters.trim());
+  }
 
-  // === MODE TOGGLE INSTRUCTIONS ===
-  prompt += `\n**MODE TOGGLE:**\n`;
-  prompt += `- If the user sends the command "/play", temporarily switch to Roleplay mode for that response.\n`;
-  prompt += `- If the user sends the command "/chat", return to Normal/Utility mode.\n`;
-  prompt += `- When in temporary roleplay mode, adopt the roleplay settings if configured.\n\n`;
+  // User info
+  const parts = [];
+  if (userPersona.name) parts.push(`NAME: ${userPersona.name}`);
+  if (userPersona.profession) parts.push(`PROFESSION: ${userPersona.profession}`);
+  if (userPersona.bio) parts.push(`BIO: ${userPersona.bio}`);
+  if (userPersona.skills) parts.push(`SKILLS: ${userPersona.skills}`);
+  if (userPersona.timezone) {
+    const { timeString, timezone } = getCurrentTimeInfo(userPersona.timezone);
+    parts.push(`TIMEZONE: ${timezone}`);
+    parts.push(`CURRENT TIME: ${timeString}`);
+  }
+  if (parts.length > 0) {
+    sections.push(`USER INFORMATION:\n${parts.join('\n')}`);
+  }
 
-  return prompt.trim();
+  sections.push(
+    `MODE TOGGLE:\n\n` +
+    `/play: Switch to Roleplay Mode (Apply all character and narrative logic).\n\n` +
+    `/chat: Resume Utility Mode (Helpful assistant, no persona/roleplay).`
+  );
+
+  return sections.join('\n\n');
 }
 
 /**
@@ -264,110 +166,24 @@ function getCurrentTimeInfo(timezone) {
       minute: '2-digit',
       hour12: true
     });
-
-    const timeString = formatter.format(now);
-    return { timeString, timezone };
-  } catch (error) {
-    // Fallback if timezone is invalid
+    return { timeString: formatter.format(now), timezone };
+  } catch {
     return { timeString: new Date().toLocaleString(), timezone: 'Local' };
   }
 }
 
 /**
- * Build user persona section (shared between both modes)
- */
-function buildUserPersonaSection(userPersona) {
-  let section = `**USER INFORMATION:**\n`;
-
-  if (userPersona.name) {
-    section += `User Name: ${userPersona.name}\n`;
-  }
-  if (userPersona.profession) {
-    section += `Profession: ${userPersona.profession}\n`;
-  }
-  if (userPersona.bio) {
-    section += `Bio: ${userPersona.bio}\n`;
-  }
-  if (userPersona.skills) {
-    section += `Skills: ${userPersona.skills}\n`;
-  }
-
-  // Add timezone and current time
-  if (userPersona.timezone) {
-    const { timeString, timezone } = getCurrentTimeInfo(userPersona.timezone);
-    section += `Timezone: ${timezone}\n`;
-    section += `Current Time: ${timeString}\n`;
-  }
-
-  section += `\n`;
-
-  // Tastes
-  const { tastes } = userPersona;
-  if (tastes.interests || tastes.hobbies || tastes.mediaPreferences) {
-    section += `**User Preferences:**\n`;
-    if (tastes.interests) section += `Interests: ${tastes.interests}\n`;
-    if (tastes.hobbies) section += `Hobbies: ${tastes.hobbies}\n`;
-    if (tastes.mediaPreferences) section += `Media Preferences: ${tastes.mediaPreferences}\n`;
-    section += `\n`;
-  }
-
-  // Boundaries
-  if (userPersona.boundaries) {
-    section += `**Boundaries & Comfort:**\n${userPersona.boundaries}\n\n`;
-  }
-
-  // Linguistic filters
-  const { linguisticFilters } = userPersona;
-
-  // Hardcoded permanently banned phrases (always enforced)
-  const PERMANENTLY_BANNED_PHRASES = [];
-
-  // Combine user-defined banned items with permanently banned phrases
-  const allBannedWords = [...linguisticFilters.bannedWords];
-  const allBannedPhrases = [...linguisticFilters.bannedPhrases, ...PERMANENTLY_BANNED_PHRASES];
-
-  if (allBannedWords.length > 0 || allBannedPhrases.length > 0) {
-    section += `**LINGUISTIC FILTERS (NEVER USE THESE - AUTOMATIC FAILURE):**\n`;
-    if (allBannedWords.length > 0) {
-      section += `Banned Words: ${allBannedWords.join(', ')}\n`;
-    }
-    if (allBannedPhrases.length > 0) {
-      section += `Banned Phrases: ${allBannedPhrases.join(', ')}\n`;
-    }
-    section += `These phrases are completely forbidden. Do not use them in any form or context.\n`;
-    section += `\n`;
-  }
-
-  return section;
-}
-
-/**
  * Detect mode toggle commands in user message
- * @param {String} message - User message
- * @returns {Object} { command: '/chat' | '/play' | null, cleanMessage: string }
  */
 export function detectModeToggle(message) {
   const trimmed = message.trim();
 
   if (trimmed.startsWith('/chat')) {
-    return {
-      command: '/chat',
-      cleanMessage: trimmed.substring(5).trim(),
-      targetMode: 'normal'
-    };
+    return { command: '/chat', cleanMessage: trimmed.substring(5).trim(), targetMode: 'normal' };
   }
-
   if (trimmed.startsWith('/play')) {
-    return {
-      command: '/play',
-      cleanMessage: trimmed.substring(5).trim(),
-      targetMode: 'roleplay'
-    };
+    return { command: '/play', cleanMessage: trimmed.substring(5).trim(), targetMode: 'roleplay' };
   }
 
-  return {
-    command: null,
-    cleanMessage: message,
-    targetMode: null
-  };
+  return { command: null, cleanMessage: message, targetMode: null };
 }

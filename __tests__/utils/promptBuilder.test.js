@@ -10,7 +10,7 @@ import { buildSystemPrompt, detectModeToggle } from '../../client/src/utils/prom
 const baseSettings = {
   mode: 'normal',
   roleplay: {
-    world: { settingLore: '', openingScene: '', narratorVoice: '', pacing: '', hardRules: [], turnLogic: '' },
+    world: { settingLore: '', openingScene: '', narratorVoice: '', hardRules: [] },
     characterMode: 'single',
     singleCharacterRef: '',
     multipleCharacterRefs: [],

@@ -1,20 +1,19 @@
 // Default settings structure for the application
 
 export const DEFAULT_SETTINGS = {
-  mode: 'normal', // 'roleplay' or 'normal'
+  mode: 'roleplay', // 'roleplay' or 'normal'
 
   roleplay: {
     world: {
       settingLore: '',
       openingScene: '',
-      narratorVoice: '',
-      pacing: '',
-      hardRules: [],
-      turnLogic: ''
+      narratorVoice: 'companion',
+      hardRules: []
     },
     characterMode: 'single', // 'single' or 'multi'
-    singleCharacterRef: '', // Reference to character file ID (empty until template applied)
-    multipleCharacterRefs: [] // Array of character file IDs
+    singleCharacterRef: 'echo', // Reference to character file ID
+    multipleCharacterRefs: [], // Array of character file IDs
+    character: null // Inline character data (from template)
   },
 
   utility: {

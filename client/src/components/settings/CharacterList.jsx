@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Button from '../ui/Button';
 import CharacterEditor from './CharacterEditor';
-import { getAllCharacters, getAllDefaultCharacters, deleteCharacter as deleteCharacterFile } from '../../utils/characterAPI';
+import { getAllCharacters, deleteCharacter as deleteCharacterFile } from '../../utils/characterAPI';
 import { generateCharacterId } from '../../utils/characterConverter';
 
 export default function CharacterList({ characterRefs = [], onCharacterRefsChange }) {
@@ -9,19 +9,13 @@ export default function CharacterList({ characterRefs = [], onCharacterRefsChang
   const [availableCharacters, setAvailableCharacters] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load available characters (user + defaults)
+  // Load available characters (user-created only)
   useEffect(() => {
     async function loadCharacters() {
       setIsLoading(true);
       try {
-        const [userChars, defaultChars] = await Promise.all([
-          getAllCharacters(),
-          getAllDefaultCharacters()
-        ]);
-
-        // Combine user and default characters
-        const allChars = [...userChars, ...defaultChars];
-        setAvailableCharacters(allChars);
+        const userChars = await getAllCharacters();
+        setAvailableCharacters(userChars);
       } catch (error) {
         console.error('Error loading characters:', error);
         setAvailableCharacters([]);

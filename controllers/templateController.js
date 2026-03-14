@@ -27,19 +27,18 @@ function safeJSONParse(jsonString) {
 }
 
 const BLANK_SETTINGS = {
-  mode: 'normal',
+  mode: 'roleplay',
   roleplay: {
     world: {
       settingLore: '',
       openingScene: '',
-      narratorVoice: '',
-      pacing: '',
-      hardRules: ['Never speak/act for the User'],
-      turnLogic: 'Stop after describing the scene/NPC reaction'
+      narratorVoice: 'companion',
+      hardRules: []
     },
     characterMode: 'single',
-    singleCharacterRef: '',
-    multipleCharacterRefs: []
+    singleCharacterRef: 'echo',
+    multipleCharacterRefs: [],
+    character: null
   },
   utility: {
     assistantIdentity: { persona: '', communicationStyle: '' },

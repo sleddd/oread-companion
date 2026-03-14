@@ -358,6 +358,11 @@ const useStore = create((set, get) => ({
         body: JSON.stringify({ modelName: normalizedName })
       });
 
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+        throw new Error(err.error || err.details?.[0]?.message || `HTTP ${response.status}`);
+      }
+
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
 
@@ -373,28 +378,23 @@ const useStore = create((set, get) => ({
             const data = JSON.parse(line.slice(6));
 
             if (data.error) {
-              alert(`Download error: ${data.error}`);
               set({
                 isDownloading: false,
-                downloadProgress: { progress: 0, status: 'Failed', message: data.error }
+                downloadProgress: { progress: 0, status: `Error: ${data.error}`, message: '' }
               });
               return;
             }
 
             if (data.completed) {
-              set({
-                isDownloading: false,
-                downloadProgress: { progress: 100, status: 'Complete!', message: '' }
-              });
-              // Refresh models list
+              // Keep isDownloading true so the progress bar stays visible during the delay
+              set({ downloadProgress: { progress: 100, status: 'Complete!', message: '' } });
               get().fetchModels();
               setTimeout(() => {
-                set({ downloadProgress: { progress: 0, status: '', message: '' } });
+                set({ isDownloading: false, downloadProgress: { progress: 0, status: '', message: '' } });
               }, 2000);
               return;
             }
 
-            // Update progress
             if (data.status) {
               const progress = data.total
                 ? Math.round((data.completed / data.total) * 100)
@@ -411,11 +411,13 @@ const useStore = create((set, get) => ({
           }
         }
       }
+
+      // Stream ended without a completed event — reset state
+      set({ isDownloading: false, downloadProgress: { progress: 0, status: '', message: '' } });
     } catch (error) {
-      alert(`Download failed: ${error.message}`);
       set({
         isDownloading: false,
-        downloadProgress: { progress: 0, status: 'Failed', message: error.message }
+        downloadProgress: { progress: 0, status: `Error: ${error.message}`, message: '' }
       });
     }
   },

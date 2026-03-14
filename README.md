@@ -1,217 +1,113 @@
-# Oread Chat Interface
+# Oread
 
-A modern, full-stack chat interface for local Ollama models with session management, character roleplay, and memory. Built with Node.js, Express, React, Vite, and SQLite.
+A local-first AI chat app for world-building, roleplay, and custom AI interactions. Build immersive worlds and step into them, create companion characters, or craft tailored utility assistants — all running on your own hardware through Ollama.
 
-> **Note**: This app is in active development. It is fully functional but not yet exhaustively bug-tested. Use at your own risk.
+> **Note**: This app is in active development. Fully functional but not yet exhaustively tested.
+
+---
+
+## What is Oread?
+
+Oread is a chat interface that puts **worlds first**. Instead of just picking a model and chatting, you build complete environments — settings, characters, rules, narrative voice — and then have conversations inside them.
+
+**Roleplay worlds** — Create a fantasy tavern, a noir detective's office, a cyberpunk back-alley, or anything you can imagine. Define the lore, set the opening scene, add characters with rich personalities and backstories, and let the story unfold.
+
+**Companion characters** — Build AI companions with distinct personalities, communication styles, and areas of expertise. A mindful wellness companion, a witty conversation partner, or a reflective journaling buddy.
+
+**Utility assistants** — Configure purpose-built AI tools like code reviewers, research assistants, or expert tutors with custom personas, guardrails, and formatting preferences. No world-building needed — just a focused identity and rules.
+
+Everything is saved as a **template** you can switch between instantly. Jump from a fantasy adventure to a code review session to a reflective conversation with one click.
 
 ---
 
 ## Features
 
-### 💬 Chat
-- Real-time token-by-token streaming responses
-- Session-based conversations with independent histories
-- Mode toggle commands: `/chat` (utility) and `/play` (roleplay)
-
-### 🧠 Memory
-- All messages persisted to SQLite
-- Semantic search using Ollama `nomic-embed-text` embeddings (FAISS index per session)
-- Hybrid context for long sessions: recent 20 messages + top 5 semantically matched from history
-- Activates automatically for sessions with >50 messages when Memory is enabled
-
-### 🎭 Roleplay & Characters
-- Single or multi-character roleplay modes
-- Character files with identity, personality, backstory, appearance, and voice
-- Auto-extraction: AI analyzes every 5 messages and suggests character detail updates (requires your approval)
-- Avatar image upload (auto-resized to 512×512px)
-- World building: lore, opening scene, narrator voice, pacing, hard rules
-
-### ⚙️ Settings & Templates
-- 9 preset templates (roleplay and utility) loaded from `data/templates/defaults/`
-- Active settings stored as `data/templates/active.json`
-- Auto-save: localStorage (instant) + backend API (1s debounce)
-- Import/export settings as JSON
-
-### 🎨 Design
-- Oread dark theme — Montserrat font, teal accent (#4db8a8), dark backgrounds (#1a1a1a)
-- Teal/dark chat bubbles, pill-shaped input, character avatar sidebar
-- Collapsible settings sections, infinite scroll message history
-
-### 📦 Model Management
-- List, download, and switch Ollama models
-- HuggingFace GGUF support (`hf.co/username/model`)
-- Real-time SSE download progress
+- **World building** — Lore, opening scenes, narrator voice, pacing, and hard rules that shape every response
+- **Character system** — Name, backstory, personality traits, appearance, voice, inventory; single or multi-character modes
+- **Streaming chat** — Real-time token-by-token responses via SSE
+- **Session management** — Independent conversation histories, archiving, and session switching
+- **Semantic memory** — FAISS vector search surfaces relevant context from long conversations (50+ messages)
+- **Auto-extraction** — AI analyzes roleplay conversations and suggests character detail updates
+- **Templates** — 9 built-in presets (roleplay + utility); save, import, and export your own
+- **Model management** — Browse, download, and switch Ollama models; HuggingFace GGUF support
+- **User persona** — Define yourself once and carry your identity across all worlds
+- **Dark theme** — Montserrat font, teal accent (#4db8a8), designed for long sessions
 
 ---
 
-## Prerequisites
+## Quick Start
+
+### Prerequisites
 
 1. **Node.js v18+**
-2. **Ollama** — [https://ollama.com](https://ollama.com)
-   ```bash
-   ollama serve
-   ```
-3. **Embedding model** (required for memory):
+2. **Ollama** — [ollama.com](https://ollama.com)
+3. **An embedding model** (for memory):
    ```bash
    ollama pull nomic-embed-text
    ```
 
----
-
-## Installation
+### Install
 
 ```bash
-# Backend
+# Clone the repo
+git clone <repo-url> && cd chat
+
+# Backend dependencies
 npm install
 
-# Frontend
+# Frontend dependencies
 cd client && npm install && cd ..
 ```
 
----
-
-## Running
+### Run
 
 ```bash
+# Make sure Ollama is running
+ollama serve
+
 # Terminal 1 — Backend (http://localhost:3001)
-npm start
+npm run dev
 
 # Terminal 2 — Frontend (http://localhost:5173)
 cd client && npm run dev
 ```
 
-Open **http://localhost:5173**
+Open **http://localhost:5173** and pick a template to get started.
 
 ---
 
-## API Endpoints
+## How It Works
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/health` | Health check (Ollama, DB) |
-| GET | `/api/models` | List available models |
-| POST | `/api/models/pull` | Download model (SSE stream) |
-| POST | `/api/chat` | Chat with streaming (SSE stream) |
-| GET | `/api/csrf-token` | Get CSRF token |
-| GET/PUT/DELETE | `/api/templates/active` | Load / save / reset settings |
-| GET | `/api/templates` | List all preset templates |
-| GET | `/api/templates/:id` | Get a single preset template |
-| POST/GET/PUT/DELETE | `/api/sessions` | Session management |
-| POST/GET | `/api/sessions/:id/messages` | Session messages |
-| POST | `/api/memory/embed` | Create embeddings (background) |
-| POST | `/api/memory/search` | Semantic search |
-| GET | `/api/memory/status/:id` | Embedding status |
-| GET/POST/DELETE | `/api/characters/:id` | User character CRUD |
-| GET | `/api/characters/defaults/all` | List default characters |
-| POST | `/api/characters/copy/:id` | Copy default character to user |
+1. **Pick a template** — Choose a built-in world (Fantasy Tavern, Cyberpunk Hacker, Detective Noir...) or a utility assistant (Code Reviewer, Research Assistant, Expert Tutor...), or create your own from scratch.
+
+2. **Customize** — Edit the world settings, characters, rules, and narrative style. For utility mode, configure the assistant identity, guardrails, and formatting.
+
+3. **Chat** — Start a session and interact. The system prompt is built automatically from your template settings. Streaming responses appear token by token.
+
+4. **Memory kicks in** — After 50+ messages, semantic memory activates. The system retrieves relevant earlier context so the conversation stays coherent over long sessions.
+
+5. **Characters evolve** — In roleplay mode, the AI periodically analyzes the conversation and suggests updates to character details based on what's happened in the story.
 
 ---
 
-## Project Structure
+## Built-in Templates
 
-```
-/chat
-├── config/index.js              # Environment config & validation
-├── server.js                    # Express app, core endpoints
-│
-├── routes/
-│   ├── templates.js             # Template + active settings endpoints
-│   ├── sessions.js              # Session CRUD + messages
-│   ├── memory.js                # Embedding endpoints
-│   └── characters.js            # Character file management
-│
-├── controllers/
-│   ├── templateController.js    # Default templates + active settings CRUD
-│   └── characterController.js   # Character file I/O
-│
-├── services/
-│   ├── ollama.js                # Ollama API wrapper
-│   ├── database.js              # SQLite + WAL mode setup
-│   ├── embeddingService.js      # Embeddings + semantic search (FAISS)
-│   ├── vectorSearch.js          # FAISS vector index per session
-│   └── extractionAgent.js       # Character detail extraction
-│
-├── middleware/
-│   ├── security.js              # Rate limiting, CSRF, Helmet, sanitization
-│   ├── validation.js            # Joi schemas for all endpoints
-│   └── errorHandler.js          # Async error wrapper, 404, global handler
-│
-├── data/
-│   ├── chat.db                  # SQLite (sessions, messages)
-│   ├── vectors/                 # FAISS index files per session
-│   ├── characters/defaults/     # Built-in character templates
-│   └── templates/
-│       ├── active.json          # Active settings (written by app)
-│       └── defaults/            # 9 preset templates
-│
-├── __tests__/                   # Vitest + Supertest test suite
-│
-└── client/                      # React frontend
-    └── src/
-        ├── App.jsx
-        ├── store/useStore.js    # Zustand store
-        ├── pages/               # ChatPage, Settings
-        ├── components/          # ui, chat, settings, session, layout, model
-        ├── utils/               # API clients, promptBuilder, characterAPI, etc.
-        └── data/                # defaultSettings, templates helper
-```
+### Roleplay Worlds
+| Template | Description |
+|----------|-------------|
+| Fantasy Tavern | Medieval fantasy tavern with Elara the tavern keeper |
+| Cyberpunk Hacker | Neon-lit back-alley with a rogue hacker guide |
+| Detective Noir | 1940s noir detective's office |
+| Sci-Fi Explorer | Deep space exploration aboard the ISS Wanderlust |
+| Companion — Kairos | Calm, reflective wellness and mindfulness companion |
+| Companion — Echo | Warm, curious conversation companion |
 
----
-
-## Architecture
-
-### Data Flow — Chat Message
-
-```
-User types message
-  ↓
-Frontend (Zustand store) → POST /api/chat
-  ↓
-Backend: session > 50 messages + memory enabled?
-  ├─ YES → hybrid context: recent 20 + top 5 semantic matches (FAISS)
-  └─ NO  → full history from client
-  ↓
-Stream response via SSE
-  ↓
-Save messages to SQLite (before res.end())
-  ↓
-Background (non-blocking):
-  ├─ Generate embeddings → FAISS index (data/vectors/:sessionId/)
-  └─ Roleplay + every 5 msgs → run extraction agent → store suggestions
-```
-
-### Settings Flow
-
-```
-User changes setting
-  ↓
-setSettings() in Zustand
-  ├─ Immediate → localStorage
-  └─ 1s debounce → PUT /api/templates/active → data/templates/active.json
-```
-
-### Component Tree
-
-```
-App.jsx
-├── Header
-├── ChatPage
-│   ├── Sidebar (avatar, SessionManager, track selector)
-│   ├── ChatInterface
-│   │   ├── MessageHistoryViewer (infinite scroll)
-│   │   └── ChatInput
-│   └── AutoUpdateSuggestions (extraction modal)
-└── Settings (tabbed)
-    ├── TemplateSelector
-    ├── ModeSelector
-    ├── WorldSettingsPanel + NarrativeSettingsPanel
-    ├── CharacterEditor + CharacterList
-    ├── UtilitySettingsPanel
-    ├── UserPersonaPanel
-    ├── GeneralSettingsPanel
-    ├── ModelSelector + ModelDownloader
-    └── SessionManager
-```
+### Utility Assistants
+| Template | Description |
+|----------|-------------|
+| Code Reviewer | Senior engineer providing constructive code review |
+| Research Assistant | Structured research and analysis partner |
+| Expert Tutor | Adaptive teacher across any subject |
 
 ---
 
@@ -219,61 +115,25 @@ App.jsx
 
 **Red "Disconnected" status** — Run `ollama serve`, then refresh.
 
-**Memory not activating** — Pull `nomic-embed-text`, enable Memory in Settings → General, session needs >50 messages.
+**Memory not activating** — Pull `nomic-embed-text`, enable Memory in Settings > General, session needs 50+ messages.
 
-**Chat not working** — Select a model in Settings → Model, ensure a session is active.
-
-**Auto-extraction not triggering** — Must be in Roleplay mode with Memory enabled, needs 5+ messages.
+**Chat not working** — Select a model in Settings > Model, ensure a session is active.
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Backend runtime | Node.js (ES Modules) |
-| API framework | Express.js |
-| AI / LLM | Ollama (`ollama` npm package) |
-| Embeddings | Ollama `nomic-embed-text` + FAISS |
-| Database | SQLite (WAL mode) via `sqlite` + `sqlite3` |
-| Security | Helmet, express-rate-limit, Joi, CSRF tokens |
-| Frontend framework | React 19 |
-| Build tool | Vite |
-| State management | Zustand |
-| Styling | SCSS modules |
-| Testing | Vitest + Supertest |
+Node.js, Express, SQLite, React 19, Vite, Zustand, SCSS, Ollama, FAISS
+
+For full architecture details, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
-## Version History
+## Documentation
 
-### v3.3.0 (2026-03-13) — Memory & dependency cleanup
-- Replaced `langchainRAG.js` with leaner `embeddingService.js`
-- Removed unused `mcpClient.js` and MCP architecture
-- Removed `data/personality-system/` trait JSON files
-- FAISS vector store retained for semantic search
-
-### v3.2.0 (2026-03-13) — Settings → Templates consolidation
-- Settings storage unified under `data/templates/active.json`
-- `/api/settings` removed; settings now served via `/api/templates/active`
-- Removed unused services: `sessionSecurity.js`, `personalitySystem.js`
-- Removed unused middleware: `auth.js`, `authLimiter`
-
-### v3.1.0 (2026-03-12) — SQLite + FAISS Vector Storage
-- FAISS vector index per session for semantic search
-- WAL mode for concurrent SQLite access
-
-### v3.0.0 (2026-03-11) — Memory System
-- Session-scoped semantic memory with auto-extraction
-- Infinite scroll message history
-
-### v2.1.0 (2026-03-11) — Oread Design System
-- Dark theme, Montserrat font, teal accent
-
-### v2.0.0 (2026-03-11) — Settings & Templates
-- Zustand state management, template system, character management
-
-### v1.0.0 (2026-03-11) — Initial Release
+- [Architecture](docs/ARCHITECTURE.md) — System design, data flow, project structure, and API reference
+- [Quick Start](docs/QUICK_START.md) — Getting up and running fast
+- [Security](docs/SECURITY.md) — Security model and configuration
 
 ---
 

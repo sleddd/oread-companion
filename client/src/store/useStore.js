@@ -3,6 +3,7 @@ import { DEFAULT_SETTINGS } from '../data/defaultSettings';
 import { loadTemplates } from '../data/templates';
 import { buildSystemPrompt, detectModeToggle } from '../utils/promptBuilder';
 import { saveSettings as saveSettingsAPI, loadSettings as loadSettingsAPI } from '../utils/settingsAPI';
+import { apiFetch } from '../utils/apiClient';
 
 // Debounce timeout reference
 let saveTimeoutRef = null;
@@ -218,9 +219,8 @@ const useStore = create((set, get) => ({
     const modelToUse = state.settings.general.selectedModel || selectedModel;
 
     try {
-      const response = await fetch('/api/chat', {
+      const response = await apiFetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: modelToUse,
           messages: conversationHistory.map(m => ({ role: m.role, content: m.content })),
@@ -331,9 +331,8 @@ const useStore = create((set, get) => ({
     });
 
     try {
-      const response = await fetch('/api/models/pull', {
+      const response = await apiFetch('/api/models/pull', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ modelName })
       });
 
@@ -432,9 +431,8 @@ const useStore = create((set, get) => ({
   // Create new session
   createSession: async (name, settings) => {
     try {
-      const response = await fetch('/api/sessions', {
+      const response = await apiFetch('/api/sessions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, settings })
       });
 
@@ -502,7 +500,7 @@ const useStore = create((set, get) => ({
   // Delete session
   deleteSession: async (sessionId) => {
     try {
-      const response = await fetch(`/api/sessions/${sessionId}`, {
+      const response = await apiFetch(`/api/sessions/${sessionId}`, {
         method: 'DELETE'
       });
 
@@ -588,9 +586,8 @@ const useStore = create((set, get) => ({
     set({ contextLoading: true });
 
     try {
-      const response = await fetch('/api/memory/search', {
+      const response = await apiFetch('/api/memory/search', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, query, topK: 5 })
       });
 
@@ -623,9 +620,8 @@ const useStore = create((set, get) => ({
     set({ extractionLoading: true });
 
     try {
-      const response = await fetch(`/api/sessions/${sessionId}/analyze`, {
+      const response = await apiFetch(`/api/sessions/${sessionId}/analyze`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ settings: state.settings })
       });
 

@@ -1,21 +1,13 @@
 // Backend API client for settings persistence
 
+import { apiFetch } from './apiClient';
+
 const API_BASE = '/api/settings';
 
-// Load settings from backend
 export async function loadSettingsFromAPI() {
   try {
-    const response = await fetch(API_BASE, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
+    const response = await apiFetch(API_BASE);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const data = await response.json();
     return data.settings;
   } catch (error) {
@@ -24,21 +16,13 @@ export async function loadSettingsFromAPI() {
   }
 }
 
-// Save settings to backend
 export async function saveSettingsToAPI(settings) {
   try {
-    const response = await fetch(API_BASE, {
+    const response = await apiFetch(API_BASE, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
       body: JSON.stringify({ settings })
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const data = await response.json();
     return data.settings;
   } catch (error) {
@@ -47,20 +31,10 @@ export async function saveSettingsToAPI(settings) {
   }
 }
 
-// Delete settings from backend (reset to defaults)
 export async function deleteSettingsFromAPI() {
   try {
-    const response = await fetch(API_BASE, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
+    const response = await apiFetch(API_BASE, { method: 'DELETE' });
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const data = await response.json();
     return data.settings;
   } catch (error) {
@@ -69,7 +43,6 @@ export async function deleteSettingsFromAPI() {
   }
 }
 
-// Convenience wrapper functions for App.jsx
 export async function loadSettings() {
   try {
     const settings = await loadSettingsFromAPI();

@@ -1,5 +1,6 @@
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
+import crypto from 'crypto';
 import { CONFIG } from '../config/index.js';
 
 /**
@@ -101,7 +102,7 @@ export const corsConfig = {
   origin: corsOptions,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
   exposedHeaders: ['RateLimit-Limit', 'RateLimit-Remaining', 'RateLimit-Reset'],
   maxAge: 86400 // 24 hours
 };
@@ -174,6 +175,55 @@ export function securityLogger(req, res, next) {
 }
 
 /**
+ * CSRF Protection — Synchronizer Token Pattern
+ *
+ * Flow:
+ *   1. GET /api/csrf-token  → server issues a token (stored in session + returned as JSON)
+ *   2. Frontend sends X-CSRF-Token header on every POST/PUT/DELETE
+ *   3. csrfProtect middleware validates header matches session token
+ *
+ * Exempt: GET/HEAD/OPTIONS (safe methods), /api/health
+ */
+
+const CSRF_EXEMPT = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+export function generateCsrfToken(req) {
+  if (!req.session.csrfToken) {
+    req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+  }
+  return req.session.csrfToken;
+}
+
+export function csrfProtect(req, res, next) {
+  // Skip safe methods and health check
+  if (CSRF_EXEMPT.has(req.method) || req.path === '/api/health') {
+    return next();
+  }
+
+  // Skip if auth is disabled and we're in dev (CSRF less meaningful without sessions)
+  if (!CONFIG.ENABLE_AUTH && CONFIG.isDevelopment) {
+    return next();
+  }
+
+  const sessionToken = req.session?.csrfToken;
+  const requestToken = req.headers['x-csrf-token'];
+
+  if (!sessionToken || !requestToken) {
+    return res.status(403).json({ success: false, error: 'CSRF token missing' });
+  }
+
+  // Constant-time comparison to prevent timing attacks
+  const sessionBuf = Buffer.from(sessionToken);
+  const requestBuf = Buffer.from(requestToken);
+
+  if (sessionBuf.length !== requestBuf.length || !crypto.timingSafeEqual(sessionBuf, requestBuf)) {
+    return res.status(403).json({ success: false, error: 'CSRF token invalid' });
+  }
+
+  next();
+}
+
+/**
  * Input sanitization middleware
  * Removes potentially dangerous characters from request parameters
  */
@@ -200,5 +250,7 @@ export default {
   corsConfig,
   requestSizeMonitor,
   securityLogger,
-  sanitizeInputs
+  sanitizeInputs,
+  csrfProtect,
+  generateCsrfToken
 };

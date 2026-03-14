@@ -29,7 +29,9 @@ import {
   corsConfig,
   requestSizeMonitor,
   securityLogger,
-  sanitizeInputs
+  sanitizeInputs,
+  csrfProtect,
+  generateCsrfToken
 } from './middleware/security.js';
 import { errorHandler, notFoundHandler, asyncHandler } from './middleware/errorHandler.js';
 import { validate, chatSchema, modelPullSchema } from './middleware/validation.js';
@@ -81,6 +83,9 @@ app.use(securityLogger);
 // General rate limiting for all API routes
 app.use('/api', generalLimiter);
 
+// CSRF protection for state-changing requests
+app.use(csrfProtect);
+
 // ===== SERVICES INITIALIZATION =====
 
 async function initializeServices() {
@@ -106,6 +111,12 @@ async function initializeServices() {
 }
 
 // ===== API ROUTES =====
+
+// CSRF token endpoint — frontend calls this once on load, then sends token as X-CSRF-Token header
+app.get('/api/csrf-token', (req, res) => {
+  const token = generateCsrfToken(req);
+  res.json({ success: true, csrfToken: token });
+});
 
 app.use('/api/settings', settingsRouter);
 app.use('/api/sessions', sessionsRouter);

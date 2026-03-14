@@ -140,18 +140,18 @@ class SettingsToolsServer {
 
   async getCharacterSettings() {
     try {
-      const roleplayPath = path.join(SETTINGS_DIR, 'roleplay.json');
-      const data = await fs.readFile(roleplayPath, 'utf8');
-      const roleplay = JSON.parse(data);
+      const data = await fs.readFile(ACTIVE_FILE, 'utf8');
+      const template = JSON.parse(data);
+      const roleplay = template.settings?.roleplay;
 
       return {
         content: [{
           type: 'text',
           text: JSON.stringify({
             success: true,
-            characterMode: roleplay.characterMode,
-            singleCharacter: roleplay.singleCharacter,
-            world: roleplay.world
+            characterMode: roleplay?.characterMode,
+            singleCharacter: roleplay?.singleCharacter,
+            world: roleplay?.world
           })
         }]
       };

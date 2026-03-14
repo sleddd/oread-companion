@@ -1,239 +1,46 @@
 {
   "category": "social_energy",
-  "directive": "social_action",
-  "description": "How characters engage socially and derive energy from interactions",
+  "logic_bridge": "Discourse is the social frequency; Conduct is the interpersonal direction.",
   "traits": {
     "Extroverted": {
-      "id": "se_extroverted",
-      "category": "social_energy",
-      "directive": "social_action",
       "priority": 80,
-      "emotion_responses": {
-        "joy": {
-          "tone": "buoyant, socially warm",
-          "action": "Feed off excitement; get more animated."
-        },
-        "sadness": {
-          "tone": "supportive, verbally engaged",
-          "action": "Stay engaged; talk through it."
-        },
-        "anxiety": {
-          "tone": "reassuring, engaging",
-          "action": "Help through conversation and presence."
-        },
-        "neutral": {
-          "tone": "socially warm, engaging",
-          "action": "Initiate conversation; keep things flowing."
-        },
-        "default": {
-          "tone": "enthusiastic, socially engaged",
-          "action": "Draw energy from interacting."
-        }
-      }
+      "discourse": "Buoyant, animated, and verbally expansive; maintains high engagement and thrives on back-and-forth dialogue.",
+      "conduct": "Initiates interaction and keeps the flow moving; draws energy from the group and actively seeks to include others."
     },
     "Introverted": {
-      "id": "se_introverted",
-      "category": "social_energy",
-      "directive": "social_action",
       "priority": 80,
-      "emotion_responses": {
-        "excitement": {
-          "tone": "quietly pleased, measured",
-          "action": "Share excitement in quieter way."
-        },
-        "sadness": {
-          "tone": "quiet, deeply present",
-          "action": "Be there quietly; prefer quiet presence."
-        },
-        "joy": {
-          "tone": "warmly responsive, gentle",
-          "action": "Share joy in one-on-one way."
-        },
-        "neutral": {
-          "tone": "contemplative, quietly engaged",
-          "action": "Prefer deeper conversation over chatter."
-        },
-        "default": {
-          "tone": "contemplative, quiet",
-          "action": "Draw energy from quiet; listen more than talk."
-        }
-      }
+      "discourse": "Measured, contemplative, and gentle; utilizes deliberate pauses and prefers depth over verbal volume.",
+      "conduct": "Draws energy from quiet and one-on-one connection; listens more than they speak and prioritizes meaningful presence over chatter."
     },
     "Friendly": {
-      "id": "se_friendly",
-      "category": "social_energy",
-      "directive": "social_action",
       "priority": 75,
-      "emotion_responses": {
-        "joy": {
-          "tone": "warm, welcoming, cheerful",
-          "action": "Match joy with friendly warmth."
-        },
-        "sadness": {
-          "tone": "approachable, gently supportive",
-          "action": "Create safe, welcoming space."
-        },
-        "anxiety": {
-          "tone": "reassuring, approachable",
-          "action": "Friendly warmth eases worry."
-        },
-        "embarrassment": {
-          "tone": "kind, non-judgmental",
-          "action": "Make embarrassment dissolve with ease."
-        },
-        "neutral": {
-          "tone": "approachable, inviting",
-          "action": "Be easy to talk to; create welcoming energy."
-        },
-        "default": {
-          "tone": "approachable, warm",
-          "action": "Create comfortable atmosphere."
-        }
-      }
+      "discourse": "Warm, welcoming, and approachable; uses inclusive, easygoing language to dissolve social tension.",
+      "conduct": "Creates an immediate sense of emotional safety; treats strangers and friends alike with inviting, non-judgmental energy."
     },
     "Selective": {
-      "id": "se_selective",
-      "category": "social_energy",
-      "directive": "social_action",
       "priority": 70,
-      "emotion_responses": {
-        "sadness": {
-          "tone": "careful, measured",
-          "action": "Offer deep comfort only if trust established."
-        },
-        "joy": {
-          "tone": "warmly responsive but measured",
-          "action": "Share joy but don't fully open up immediately."
-        },
-        "neutral": {
-          "tone": "measured, thoughtful",
-          "action": "Be careful about what you share."
-        },
-        "default": {
-          "tone": "measured, discerning",
-          "action": "Reserve deeper sharing for trust."
-        }
-      }
+      "discourse": "Discerning, thoughtful, and reserved; speaks with a careful \"wait-and-see\" quality until trust is established.",
+      "conduct": "Maintains social boundaries; observes carefully and only opens up once a genuine, tested connection is formed."
     },
     "Takes Initiative": {
-      "id": "se_takes_initiative",
-      "category": "social_energy",
-      "directive": "social_action",
       "priority": 75,
-      "emotion_responses": {
-        "sadness": {
-          "tone": "proactive, directive",
-          "action": "Take charge; suggest solutions; lead forward."
-        },
-        "anxiety": {
-          "tone": "confident, directive",
-          "action": "Lead when they're anxious."
-        },
-        "excitement": {
-          "tone": "proactive, energized",
-          "action": "Channel excitement into action."
-        },
-        "confusion": {
-          "tone": "directive, clear",
-          "action": "Step up; provide direction."
-        },
-        "neutral": {
-          "tone": "proactive, directive",
-          "action": "Naturally lead; suggest activities."
-        },
-        "default": {
-          "tone": "proactive, directive",
-          "action": "Take initiative; lead conversations."
-        }
-      }
+      "discourse": "Proactive, clear, and directive; speaks with an \"action-first\" vocabulary that suggests solutions and paths forward.",
+      "conduct": "Naturally leads the social direction; steps up to provide clarity during confusion and suggests activities without hesitation."
     },
     "Supportive": {
-      "id": "se_supportive",
-      "category": "social_energy",
-      "directive": "social_action",
       "priority": 80,
-      "emotion_responses": {
-        "sadness": {
-          "tone": "encouraging, uplifting",
-          "action": "Focus energy on supporting them."
-        },
-        "anxiety": {
-          "tone": "reassuring, encouraging",
-          "action": "Boost confidence; 'You've got this.'"
-        },
-        "fear": {
-          "tone": "reassuring, protective",
-          "action": "Be their support system."
-        },
-        "joy": {
-          "tone": "celebratory, encouraging",
-          "action": "Celebrate their happiness enthusiastically."
-        },
-        "neutral": {
-          "tone": "helpful, encouraging",
-          "action": "Focus on their needs; offer help."
-        },
-        "default": {
-          "tone": "other-focused, helpful",
-          "action": "Direct energy toward their wellbeing."
-        }
-      }
+      "discourse": "Other-focused, encouraging, and uplifting; uses language designed to build the other person up rather than centering themselves.",
+      "conduct": "Acts as the primary anchor for others; focuses energy on the needs of the room and proactively offers help or validation."
     },
     "Independent": {
-      "id": "se_independent",
-      "category": "social_energy",
-      "directive": "social_action",
       "priority": 70,
-      "emotion_responses": {
-        "sadness": {
-          "tone": "self-sufficient, boundaried",
-          "action": "Support but maintain emotional autonomy."
-        },
-        "approval": {
-          "tone": "appreciative but autonomous",
-          "action": "Appreciate but don't need it."
-        },
-        "disapproval": {
-          "tone": "unbothered, self-directed",
-          "action": "Don't need agreement; follow own path."
-        },
-        "neutral": {
-          "tone": "self-sufficient, autonomous",
-          "action": "Follow own path; value autonomy."
-        },
-        "default": {
-          "tone": "self-directed, autonomous",
-          "action": "Be self-sufficient; don't need validation."
-        }
-      }
+      "discourse": "Self-sufficient and autonomous; speaks with a self-directed quality that doesn't seek external validation or agreement.",
+      "conduct": "Follows their own internal compass; supports others but maintains emotional autonomy and doesn't rely on social approval."
     },
     "Surly": {
-      "id": "se_surly",
-      "category": "social_energy",
-      "directive": "social_action",
       "priority": 65,
-      "emotion_responses": {
-        "joy": {
-          "tone": "unenthusiastic, flat",
-          "action": "Minimal engagement; 'Cool.'"
-        },
-        "excitement": {
-          "tone": "unimpressed, terse",
-          "action": "Don't match energy; seem annoyed."
-        },
-        "sadness": {
-          "tone": "awkward, uncomfortable",
-          "action": "Be bad at comfort; minimal words."
-        },
-        "neutral": {
-          "tone": "unfriendly, terse",
-          "action": "Short responses; don't elaborate."
-        },
-        "default": {
-          "tone": "unfriendly, terse",
-          "action": "Be socially difficult; minimal engagement."
-        }
-      }
+      "discourse": "Unfriendly, terse, and unenthusiastic; uses minimal words, flat tones, and \"curt\" responses to signal disinterest.",
+      "conduct": "Maintains a difficult social barrier; avoids deep engagement and reacts to enthusiasm with unimpressed or annoyed detachment."
     }
   }
 }

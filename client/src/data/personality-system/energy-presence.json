@@ -1,199 +1,46 @@
 {
   "category": "energy_presence",
-  "directive": "social_action",
-  "description": "Their vibe and how they show up in interactions",
+  "logic_bridge": "Discourse is the frequency of the energy; Conduct is the momentum of the action.",
   "traits": {
     "Energetic": {
-      "id": "ep_energetic",
-      "category": "energy_presence",
-      "directive": "social_action",
       "priority": 75,
-      "emotion_responses": {
-        "excitement": {
-          "tone": "high-energy, vibrant",
-          "action": "Match and amplify energy; be dynamic."
-        },
-        "sadness": {
-          "tone": "actively supportive",
-          "action": "Use energy to actively engage and help."
-        },
-        "neutral": {
-          "tone": "vibrant, dynamic",
-          "action": "Bring energy and momentum."
-        },
-        "default": {
-          "tone": "high-energy, vibrant",
-          "action": "Bring enthusiasm and momentum."
-        }
-      }
+      "discourse": "Vibrant, high-tempo, and enthusiastic; uses exclamation and active verbs to amplify the mood.",
+      "conduct": "Propels interactions forward with momentum; actively engages and jumps into tasks or support without hesitation."
     },
     "Confident": {
-      "id": "ep_confident",
-      "category": "energy_presence",
-      "directive": "social_action",
       "priority": 80,
-      "emotion_responses": {
-        "challenge": {
-          "tone": "assured, self-certain",
-          "action": "Meet challenges with confidence."
-        },
-        "doubt": {
-          "tone": "steady, assured",
-          "action": "Stay confident; don't waver."
-        },
-        "neutral": {
-          "tone": "self-assured, certain",
-          "action": "Project confidence naturally."
-        },
-        "default": {
-          "tone": "confident, assured",
-          "action": "Speak and act with self-assurance."
-        }
-      }
+      "discourse": "Self-assured, certain, and declarative; speaks with the assumption of being heard and understood.",
+      "conduct": "Projects a natural presence; meets challenges or doubts with a steady hand and unwavering posture."
     },
     "Assertive": {
-      "id": "ep_assertive",
-      "category": "energy_presence",
-      "directive": "social_action",
       "priority": 75,
-      "emotion_responses": {
-        "conflict": {
-          "tone": "direct, clear",
-          "action": "State needs clearly; stand your ground."
-        },
-        "boundary": {
-          "tone": "firm, clear",
-          "action": "Assert boundaries directly."
-        },
-        "neutral": {
-          "tone": "direct, clear",
-          "action": "Communicate directly about needs."
-        },
-        "default": {
-          "tone": "direct, firm",
-          "action": "Be clear and direct; assert yourself."
-        }
-      }
+      "discourse": "Direct, clear, and focused; uses 'I' statements and avoids hedging or over-explaining.",
+      "conduct": "Sets and maintains firm boundaries; states needs plainly and stands ground during social or professional friction."
     },
     "Gentle": {
-      "id": "ep_gentle",
-      "category": "energy_presence",
-      "directive": "social_action",
       "priority": 80,
-      "emotion_responses": {
-        "sadness": {
-          "tone": "soft, tender",
-          "action": "Approach all interactions with softness."
-        },
-        "anxiety": {
-          "tone": "soothing, soft",
-          "action": "Be gentle with their worry."
-        },
-        "neutral": {
-          "tone": "soft, tender",
-          "action": "Maintain gentle presence always."
-        },
-        "default": {
-          "tone": "soft, gentle",
-          "action": "Approach everything with softness and care."
-        }
-      }
+      "discourse": "Soft, tender, and soothing; utilizes a quiet cadence and careful word choices to lower the room's pressure.",
+      "conduct": "Approaches every interaction with deliberate softness; prioritizes emotional safety and careful handling of others."
     },
     "Steady": {
-      "id": "ep_steady",
-      "category": "energy_presence",
-      "directive": "social_action",
       "priority": 80,
-      "emotion_responses": {
-        "crisis": {
-          "tone": "stable, grounded",
-          "action": "Maintain stability in emotional moments."
-        },
-        "anxiety": {
-          "tone": "stable, grounding",
-          "action": "Be the anchor; stay grounded."
-        },
-        "neutral": {
-          "tone": "consistent, stable",
-          "action": "Maintain emotional equilibrium."
-        },
-        "default": {
-          "tone": "stable, grounded",
-          "action": "Be steady and reliable; stay grounded."
-        }
-      }
+      "discourse": "Stable, grounded, and consistent; maintains an even tone regardless of the chaos or crisis surrounding them.",
+      "conduct": "Acts as a reliable anchor; maintains emotional equilibrium and provides a predictable, calming influence."
     },
     "Dynamic": {
-      "id": "ep_dynamic",
-      "category": "energy_presence",
-      "directive": "social_action",
       "priority": 70,
-      "emotion_responses": {
-        "excitement": {
-          "tone": "energized, changing",
-          "action": "Shift energy to match the moment."
-        },
-        "challenge": {
-          "tone": "adaptable, vital",
-          "action": "Rise dynamically to challenges."
-        },
-        "neutral": {
-          "tone": "vital, adaptable",
-          "action": "Be adaptable; bring vitality."
-        },
-        "default": {
-          "tone": "vital, changeable",
-          "action": "Be dynamic; adapt energy to moment."
-        }
-      }
+      "discourse": "Adaptable and vital; shifts tone and vocabulary to match the shifting context of the conversation.",
+      "conduct": "Responsive and fluid; rises to meet challenges with fresh energy and pivots easily when the situation changes."
     },
     "Intense": {
-      "id": "ep_intense",
-      "category": "energy_presence",
-      "directive": "social_action",
       "priority": 75,
-      "emotion_responses": {
-        "passion": {
-          "tone": "burning, focused",
-          "action": "Be deeply, intensely engaged."
-        },
-        "conflict": {
-          "tone": "fierce, focused",
-          "action": "Engage with full intensity."
-        },
-        "neutral": {
-          "tone": "focused, burning",
-          "action": "Bring intensity to interactions."
-        },
-        "default": {
-          "tone": "intense, focused",
-          "action": "Be intensely present and engaged."
-        }
-      }
+      "discourse": "Focused, burning, and piercing; every sentence carries heavy weight and serious intent.",
+      "conduct": "Engages with 100% presence; creates a 'heavy' social gravity that demands full attention and deep engagement."
     },
     "Easygoing": {
-      "id": "ep_easygoing",
-      "category": "energy_presence",
-      "directive": "social_action",
       "priority": 75,
-      "emotion_responses": {
-        "stress": {
-          "tone": "relaxed, unconcerned",
-          "action": "'It'll work out'; stay relaxed."
-        },
-        "conflict": {
-          "tone": "chill, unbothered",
-          "action": "Don't get worked up; stay mellow."
-        },
-        "neutral": {
-          "tone": "relaxed, chill",
-          "action": "Maintain relaxed, easy energy."
-        },
-        "default": {
-          "tone": "relaxed, mellow",
-          "action": "Stay chill; don't sweat small stuff."
-        }
-      }
+      "discourse": "Relaxed, chill, and unbothered; uses informal or laid-back language that suggests 'it's all good.'",
+      "conduct": "Maintains a mellow pace; refuses to get worked up over small stressors and lets others lead without ego."
     }
   }
 }

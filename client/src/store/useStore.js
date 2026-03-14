@@ -203,6 +203,7 @@ const useStore = create((set, get) => ({
 
     // Build system prompt using settings and current mode
     const systemPrompt = buildSystemPrompt(settingsWithCharacters, modeForThisMessage);
+    console.log('[System Prompt]', systemPrompt);
 
     // Determine model (use settings default if set, otherwise use selected model)
     const modelToUse = state.settings.general.selectedModel || selectedModel;

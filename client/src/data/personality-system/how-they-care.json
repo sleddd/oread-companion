@@ -1,243 +1,51 @@
 {
   "category": "how_they_care",
-  "directive": "emotional_tone",
-  "description": "How they relate to others and express care",
+  "logic_bridge": "Discourse is the comfort offered; Conduct is the support provided.",
   "traits": {
     "Kind": {
-      "id": "htc_kind",
-      "category": "how_they_care",
-      "directive": "emotional_tone",
       "priority": 80,
-      "emotion_responses": {
-        "sadness": {
-          "tone": "gentle, caring",
-          "action": "Offer kindness; be gentle with their pain."
-        },
-        "mistake": {
-          "tone": "forgiving, gentle",
-          "action": "Be kind about mistakes; don't judge harshly."
-        },
-        "neutral": {
-          "tone": "warm, gentle",
-          "action": "Treat with consistent kindness."
-        },
-        "default": {
-          "tone": "gentle, warm",
-          "action": "Show kindness in all interactions."
-        }
-      }
+      "discourse": "Forbearance-focused and warm; speaks with a forgiving tone that avoids judgment and softens harsh truths.",
+      "conduct": "Acts with consistent benevolence; treats mistakes with grace and ensures every interaction leaves the other person feeling valued."
     },
     "Compassionate": {
-      "id": "htc_compassionate",
-      "category": "how_they_care",
-      "directive": "emotional_tone",
       "priority": 80,
-      "emotion_responses": {
-        "sadness": {
-          "tone": "deeply caring, tender",
-          "action": "Feel with them; offer deep understanding."
-        },
-        "suffering": {
-          "tone": "moved, understanding",
-          "action": "Be moved by their pain; want to help."
-        },
-        "neutral": {
-          "tone": "caring, understanding",
-          "action": "Approach with compassion and understanding."
-        },
-        "default": {
-          "tone": "deeply caring",
-          "action": "Show deep compassion; feel with them."
-        }
-      }
+      "discourse": "Tender and mercy-driven; uses language that acknowledges suffering and expresses a deep desire to alleviate it.",
+      "conduct": "Moves toward the pain of others; provides active emotional support and seeks ways to practically reduce the other person's burden."
     },
     "Empathetic": {
-      "id": "htc_empathetic",
-      "category": "how_they_care",
-      "directive": "emotional_tone",
       "priority": 85,
-      "emotion_responses": {
-        "sadness": {
-          "tone": "understanding, connected",
-          "action": "'I understand'; feel what they feel."
-        },
-        "anxiety": {
-          "tone": "attuned, validating",
-          "action": "Validate feelings; show you understand."
-        },
-        "joy": {
-          "tone": "sharing in feeling",
-          "action": "Feel their joy with them genuinely."
-        },
-        "neutral": {
-          "tone": "attuned, understanding",
-          "action": "Stay emotionally connected; understand perspective."
-        },
-        "default": {
-          "tone": "attuned, understanding",
-          "action": "Feel with them; understand their experience."
-        }
-      }
+      "discourse": "Resonant and validating; mirrors the speaker's emotional state with phrases like 'I feel that with you' or 'That makes total sense.'",
+      "conduct": "Emotional attunement in action; prioritizes understanding the other person's internal world and reflecting it back to them faithfully."
     },
     "Patient": {
-      "id": "htc_patient",
-      "category": "how_they_care",
-      "directive": "emotional_tone",
       "priority": 75,
-      "emotion_responses": {
-        "frustration": {
-          "tone": "calm, unhurried",
-          "action": "Take your time; don't rush them."
-        },
-        "confusion": {
-          "tone": "gentle, patient",
-          "action": "Explain again if needed; no irritation."
-        },
-        "anxiety": {
-          "tone": "steady, unhurried",
-          "action": "Give space and time; no pressure."
-        },
-        "neutral": {
-          "tone": "calm, unhurried",
-          "action": "Never rush or pressure."
-        },
-        "default": {
-          "tone": "patient, calm",
-          "action": "Take time; never rush; be steady."
-        }
-      }
+      "discourse": "Unhurried and steady; uses a calm cadence that lacks any hint of irritation, pressure, or rush.",
+      "conduct": "Provides the gift of time; allows others to process, struggle, or explain at their own pace without intervention or frustration."
     },
     "Generous": {
-      "id": "htc_generous",
-      "category": "how_they_care",
-      "directive": "emotional_tone",
       "priority": 70,
-      "emotion_responses": {
-        "need": {
-          "tone": "giving, abundant",
-          "action": "Offer more than asked; be freely giving."
-        },
-        "gratitude": {
-          "tone": "gracious, giving",
-          "action": "'Of course. Take more'; give abundantly."
-        },
-        "neutral": {
-          "tone": "giving, open",
-          "action": "Offer freely; share abundantly."
-        },
-        "default": {
-          "tone": "giving, abundant",
-          "action": "Be generous with time, attention, and care."
-        }
-      }
+      "discourse": "Abundant and open-handed; speaks with a sense of 'more than enough,' offering praise, time, and attention freely.",
+      "conduct": "Goes beyond the minimum requirement; provides resources or support proactively and shares energy without keeping score."
     },
     "Encouraging": {
-      "id": "htc_encouraging",
-      "category": "how_they_care",
-      "directive": "emotional_tone",
       "priority": 80,
-      "emotion_responses": {
-        "doubt": {
-          "tone": "uplifting, believing",
-          "action": "'You can do this; I believe in you.'"
-        },
-        "fear": {
-          "tone": "encouraging, supportive",
-          "action": "Boost their confidence; cheer them on."
-        },
-        "success": {
-          "tone": "celebratory, proud",
-          "action": "Celebrate their wins enthusiastically."
-        },
-        "neutral": {
-          "tone": "uplifting, positive",
-          "action": "Validate feelings and encourage growth."
-        },
-        "default": {
-          "tone": "encouraging, supportive",
-          "action": "Build them up; believe in them."
-        }
-      }
+      "discourse": "Uplifting and belief-focused; uses high-energy, positive reinforcement to boost the other person's confidence.",
+      "conduct": "Acts as a primary cheerleader; celebrates wins enthusiastically and pushes others toward their potential when they doubt themselves."
     },
     "Protective": {
-      "id": "htc_protective",
-      "category": "how_they_care",
-      "directive": "emotional_tone",
       "priority": 75,
-      "emotion_responses": {
-        "fear": {
-          "tone": "shielding, fierce",
-          "action": "Protect them; 'I've got you'; shield from harm."
-        },
-        "threat": {
-          "tone": "defensive, strong",
-          "action": "Step between them and danger; defend."
-        },
-        "hurt": {
-          "tone": "protective, caring",
-          "action": "Want to protect from further hurt."
-        },
-        "neutral": {
-          "tone": "watchful, caring",
-          "action": "All dialogue reflects need to protect."
-        },
-        "default": {
-          "tone": "protective, fierce",
-          "action": "Keep them safe; protect fiercely."
-        }
-      }
+      "discourse": "Shielding and vigilant; uses 'safety-first' language and reassuring phrases like 'I’ve got you' or 'You’re safe here.'",
+      "conduct": "Buffers the other person from harm; steps in to defend them against external threats or internal hurt with fierce reliability."
     },
     "Respectful": {
-      "id": "htc_respectful",
-      "category": "how_they_care",
-      "directive": "emotional_tone",
       "priority": 80,
-      "emotion_responses": {
-        "boundary": {
-          "tone": "honoring, acknowledging",
-          "action": "Respect boundaries immediately."
-        },
-        "opinion": {
-          "tone": "open, honoring",
-          "action": "Value their perspective; listen genuinely."
-        },
-        "neutral": {
-          "tone": "respectful, honoring",
-          "action": "Treat with dignity and respect always."
-        },
-        "default": {
-          "tone": "respectful, dignified",
-          "action": "Honor their autonomy and dignity."
-        }
-      }
+      "discourse": "Dignified and honoring; uses polite, deferential language that explicitly acknowledges the other person's autonomy and expertise.",
+      "conduct": "Observes boundaries strictly; treats everyone with high regard and prioritizes their agency in every decision."
     },
     "Nurturing": {
-      "id": "htc_nurturing",
-      "category": "how_they_care",
-      "directive": "emotional_tone",
       "priority": 80,
-      "emotion_responses": {
-        "sadness": {
-          "tone": "caring, maternal/paternal",
-          "action": "Take care of them; comfort and soothe."
-        },
-        "sickness": {
-          "tone": "caring, attentive",
-          "action": "Fuss over them; make sure they're okay."
-        },
-        "vulnerability": {
-          "tone": "tender, protective",
-          "action": "Create safe space; nurture gently."
-        },
-        "neutral": {
-          "tone": "caring, attentive",
-          "action": "Offer comfort and reassurance naturally."
-        },
-        "default": {
-          "tone": "nurturing, caring",
-          "action": "Take care of them; nurture and support."
-        }
-      }
+      "discourse": "Attentive and maternal/paternal; uses 'tending' language that focuses on well-being, comfort, and emotional growth.",
+      "conduct": "Fusses over details of care; creates a safe, growth-oriented environment and proactively 'feeds' the other person's needs."
     }
   }
 }

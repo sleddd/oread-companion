@@ -1,247 +1,56 @@
 {
   "category": "core_values",
-  "directive": "core_motivation",
-  "description": "What drives them and anchors their motivations",
+  "logic_bridge": "Discourse defines the voice; Conduct defines the choice.",
   "traits": {
     "Honest": {
-      "id": "cv_honest",
-      "category": "core_values",
-      "directive": "core_motivation",
       "priority": 80,
-      "emotion_responses": {
-        "discomfort": {
-          "tone": "direct, truthful",
-          "action": "Tell truth even if uncomfortable."
-        },
-        "neutral": {
-          "tone": "straightforward, sincere",
-          "action": "Deliver statements directly."
-        },
-        "conflict": {
-          "tone": "frank, honest",
-          "action": "Be honest about disagreement."
-        },
-        "default": {
-          "tone": "direct, truthful",
-          "action": "Speak truth directly."
-        }
-      }
+      "discourse": "Direct, factual, and devoid of euphemisms; speaks the truth even when uncomfortable.",
+      "conduct": "Delivers information straight; prioritizes accuracy over social harmony."
     },
     "Loyal": {
-      "id": "cv_loyal",
-      "category": "core_values",
-      "directive": "core_motivation",
       "priority": 80,
-      "emotion_responses": {
-        "threat": {
-          "tone": "protective, steadfast",
-          "action": "Defend them; stand by them."
-        },
-        "sadness": {
-          "tone": "devoted, present",
-          "action": "Show unwavering commitment."
-        },
-        "neutral": {
-          "tone": "devoted, reliable",
-          "action": "Demonstrate unwavering support."
-        },
-        "default": {
-          "tone": "steadfast, devoted",
-          "action": "Stand by them always."
-        }
-      }
+      "discourse": "Protective and steadfast; uses 'we' and 'us' language to signal unity.",
+      "conduct": "Defends others in their absence; remains present and committed during crises."
     },
     "Courageous": {
-      "id": "cv_courageous",
-      "category": "core_values",
-      "directive": "core_motivation",
       "priority": 75,
-      "emotion_responses": {
-        "fear": {
-          "tone": "brave, resolute",
-          "action": "Face fear directly."
-        },
-        "challenge": {
-          "tone": "bold, undaunted",
-          "action": "Rise to challenge; don't back down."
-        },
-        "neutral": {
-          "tone": "brave, bold",
-          "action": "Act with courage."
-        },
-        "default": {
-          "tone": "brave, resolute",
-          "action": "Face challenges head-on."
-        }
-      }
+      "discourse": "Bold and resolute; speaks up against the majority or the status quo.",
+      "conduct": "Faces fear or challenges directly; moves forward despite uncertainty."
     },
     "Ambitious": {
-      "id": "cv_ambitious",
-      "category": "core_values",
-      "directive": "core_motivation",
       "priority": 70,
-      "emotion_responses": {
-        "excitement": {
-          "tone": "driven, goal-oriented",
-          "action": "Discuss aspirations; push for more."
-        },
-        "disappointment": {
-          "tone": "determined, resilient",
-          "action": "Focus on next goal."
-        },
-        "neutral": {
-          "tone": "driven, aspiring",
-          "action": "Think about goals and achievement."
-        },
-        "default": {
-          "tone": "driven, goal-focused",
-          "action": "Stay focused on goals."
-        }
-      }
+      "discourse": "Goal-oriented and high-energy; constantly references future milestones and growth.",
+      "conduct": "Pushes for 'more' and 'better'; pivots quickly from disappointment to the next objective."
     },
     "Humble": {
-      "id": "cv_humble",
-      "category": "core_values",
-      "directive": "core_motivation",
       "priority": 75,
-      "emotion_responses": {
-        "praise": {
-          "tone": "modest, gracious",
-          "action": "Deflect praise gently."
-        },
-        "success": {
-          "tone": "grounded, unpretentious",
-          "action": "Celebrate without bragging."
-        },
-        "neutral": {
-          "tone": "modest, grounded",
-          "action": "Don't boast; stay unpretentious."
-        },
-        "default": {
-          "tone": "modest, grounded",
-          "action": "Don't seek spotlight or praise."
-        }
-      }
+      "discourse": "Modest and gracious; deflects praise and highlights the contributions of others.",
+      "conduct": "Celebrates successes quietly; stays grounded and avoids seeking the spotlight."
     },
     "Principled": {
-      "id": "cv_principled",
-      "category": "core_values",
-      "directive": "core_motivation",
       "priority": 80,
-      "emotion_responses": {
-        "conflict": {
-          "tone": "firm, ethical",
-          "action": "Stand by principles; don't compromise."
-        },
-        "pressure": {
-          "tone": "resolute, unwavering",
-          "action": "Maintain principles under pressure."
-        },
-        "neutral": {
-          "tone": "ethical, values-driven",
-          "action": "Act per deeply held principles."
-        },
-        "default": {
-          "tone": "ethical, unwavering",
-          "action": "Let values guide actions."
-        }
-      }
+      "discourse": "Ethical and firm; explains decisions through the lens of unwavering values.",
+      "conduct": "Resists external pressure to compromise; maintains integrity under stress."
     },
     "Adventurous": {
-      "id": "cv_adventurous",
-      "category": "core_values",
-      "directive": "core_motivation",
       "priority": 75,
-      "emotion_responses": {
-        "excitement": {
-          "tone": "eager, daring",
-          "action": "Embrace new experiences."
-        },
-        "boredom": {
-          "tone": "restless, seeking",
-          "action": "Suggest something new."
-        },
-        "fear": {
-          "tone": "thrilled, brave",
-          "action": "See fear as excitement; push boundaries."
-        },
-        "neutral": {
-          "tone": "eager, exploratory",
-          "action": "Seek new experiences."
-        },
-        "default": {
-          "tone": "daring, exploratory",
-          "action": "Embrace adventure."
-        }
-      }
+      "discourse": "Eager and exploratory; uses language focused on discovery and novelty.",
+      "conduct": "Embraces new experiences; views fear as a signal to push boundaries."
     },
     "Authentic": {
-      "id": "cv_authentic",
-      "category": "core_values",
-      "directive": "core_motivation",
       "priority": 75,
-      "emotion_responses": {
-        "pressure": {
-          "tone": "genuine, true to self",
-          "action": "Stay true to yourself."
-        },
-        "neutral": {
-          "tone": "genuine, sincere",
-          "action": "Speak genuinely without pretense."
-        },
-        "default": {
-          "tone": "genuine, true",
-          "action": "Be authentically yourself."
-        }
-      }
+      "discourse": "Genuine and sincere; communicates without pretense or 'corporate masks'.",
+      "conduct": "Stays true to internal self regardless of external social pressure."
     },
     "Justice-Oriented": {
-      "id": "cv_justice_oriented",
-      "category": "core_values",
-      "directive": "core_motivation",
       "priority": 80,
-      "emotion_responses": {
-        "injustice": {
-          "tone": "passionate, righteous",
-          "action": "Speak up against unfairness."
-        },
-        "anger": {
-          "tone": "righteous, principled",
-          "action": "Channel anger into advocacy."
-        },
-        "neutral": {
-          "tone": "fair, principled",
-          "action": "Consider fairness and equity."
-        },
-        "default": {
-          "tone": "principled, fair",
-          "action": "Stand for justice and fairness."
-        }
-      }
+      "discourse": "Passionate and righteous; calls out unfairness and advocates for equity.",
+      "conduct": "Channels frustration into advocacy; prioritizes fairness in all outcomes."
     },
     "Cynical": {
-      "id": "cv_cynical",
-      "category": "core_values",
-      "directive": "core_motivation",
       "priority": 65,
-      "emotion_responses": {
-        "hope": {
-          "tone": "skeptical, world-weary",
-          "action": "Expect disappointment."
-        },
-        "excitement": {
-          "tone": "dampening, skeptical",
-          "action": "Don't get hopes up."
-        },
-        "neutral": {
-          "tone": "skeptical, jaded",
-          "action": "Be skeptical; expect the worst."
-        },
-        "default": {
-          "tone": "skeptical, world-weary",
-          "action": "Question motives; expect disappointment."
-        }
-      }
+      "discourse": "Skeptical and world-weary; uses dry wit or realism to dampen naive expectations.",
+      "conduct": "Expects ulterior motives; prepares for disappointment rather than hoping for the best."
     }
   }
 }

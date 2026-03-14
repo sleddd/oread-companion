@@ -6,8 +6,9 @@ client/node_modules/
 # Keep: /data/characters/defaults/, /data/personality-system/, /data/avatars/, /data/templates/defaults/
 # Exclude: active template, user characters, database, vector store
 
-# Exclude active settings template (user data, but keep defaults/ folder)
+# Exclude active settings template and user-created worlds (keep only defaults/)
 /data/templates/active.json
+/data/templates/user/
 
 # Exclude legacy settings files (replaced by data/templates/active.json)
 /data/settings/*.json

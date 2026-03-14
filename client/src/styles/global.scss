@@ -2170,6 +2170,95 @@ $spacing-mobile-xl: 1rem;
 $spacing-mobile-2xl: 1.2rem;
 
 // ============================================
+// API KEY PANEL
+// ============================================
+
+.api-key-panel {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-2xl;
+
+  &__description {
+    font-size: $font-size-sm;
+    color: $color-text-muted;
+    line-height: 1.5;
+    margin: 0;
+  }
+}
+
+.api-key-section {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  padding: $spacing-xl;
+  background-color: rgba(255, 255, 255, 0.03);
+  border-radius: $radius-md;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    font-size: $font-size-lg;
+    font-weight: 500;
+    color: $color-text-primary;
+    margin: 0;
+  }
+
+  &__status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: $color-text-muted;
+
+    &--active {
+      background-color: $color-success;
+    }
+  }
+
+  &__status-text {
+    font-size: $font-size-sm;
+    color: $color-text-muted;
+  }
+
+  &__input-row {
+    display: flex;
+    gap: $spacing-md;
+  }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-sm;
+    flex-wrap: wrap;
+  }
+
+  &__message {
+    font-size: $font-size-sm;
+    margin: 0;
+
+    &--success {
+      color: $color-success;
+    }
+
+    &--error {
+      color: $color-error;
+    }
+
+    &--saving,
+    &--verifying {
+      color: $color-warning;
+    }
+  }
+}
+
+// ============================================
 // MOBILE STYLES (< 640px)
 // ============================================
 

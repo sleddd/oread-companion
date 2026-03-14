@@ -18,6 +18,7 @@ import sessionsRouter from './routes/sessions.js';
 import memoryRouter from './routes/memory.js';
 import charactersRouter from './routes/characters.js';
 import templatesRouter from './routes/templates.js';
+import apiKeysRouter from './routes/apikeys.js';
 
 // Middleware
 import {
@@ -31,6 +32,8 @@ import {
 } from './middleware/security.js';
 import { errorHandler, notFoundHandler, asyncHandler } from './middleware/errorHandler.js';
 import { validate, chatSchema, modelPullSchema } from './middleware/validation.js';
+import apiKeyService from './services/apiKeyService.js';
+import { getProviderFromModel, getProviderService } from './services/providerRouter.js';
 
 const app = express();
 const PORT = CONFIG.PORT;
@@ -112,6 +115,7 @@ app.use('/api/sessions', sessionsRouter);
 app.use('/api/memory', memoryRouter);
 app.use('/api/characters', charactersRouter);
 app.use('/api/templates', templatesRouter);
+app.use('/api/keys', apiKeysRouter);
 
 // ===== HEALTH CHECK =====
 
@@ -140,16 +144,71 @@ app.get('/api/health', asyncHandler(async (req, res) => {
     health.status = 'error';
   }
 
+  // Check cloud providers
+  const providers = await apiKeyService.getConfiguredProviders();
+  health.services.openai = providers.openai ? 'configured' : 'no_key';
+  health.services.anthropic = providers.anthropic ? 'configured' : 'no_key';
+
+  // App is ok if at least one model provider works
+  if (health.services.ollama === 'error' && !providers.openai && !providers.anthropic) {
+    health.status = 'degraded';
+  } else if (health.services.ollama === 'error') {
+    // Ollama down but cloud providers available — still ok
+    health.status = health.services.database === 'ok' ? 'ok' : 'error';
+  }
+
   const statusCode = health.status === 'ok' ? 200 : 503;
   res.status(statusCode).json(health);
 }));
 
 // ===== MODEL MANAGEMENT =====
 
-// List available models
+// List available models (Ollama + cloud providers)
 app.get('/api/models', asyncHandler(async (req, res) => {
-  const result = await ollamaService.listModels();
-  res.json(result);
+  const allModels = [];
+
+  // Always try Ollama (it may be down, that's ok)
+  try {
+    const ollamaResult = await ollamaService.listModels();
+    if (ollamaResult.success) {
+      for (const model of ollamaResult.models) {
+        allModels.push({ ...model, provider: 'ollama' });
+      }
+    }
+  } catch (error) {
+    console.log('Ollama not available for model listing:', error.message);
+  }
+
+  // Check configured cloud providers and add their models
+  const providers = await apiKeyService.getConfiguredProviders();
+
+  if (providers.openai) {
+    try {
+      const apiKey = await apiKeyService.getKey('openai');
+      const service = getProviderService('openai', apiKey);
+      const result = await service.listModels();
+      if (result.success) {
+        allModels.push(...result.models);
+      }
+    } catch (error) {
+      console.log('Failed to list OpenAI models:', error.message);
+    }
+  }
+
+  if (providers.anthropic) {
+    try {
+      const apiKey = await apiKeyService.getKey('anthropic');
+      const service = getProviderService('anthropic', apiKey);
+      const result = await service.listModels();
+      if (result.success) {
+        allModels.push(...result.models);
+      }
+    } catch (error) {
+      console.log('Failed to list Anthropic models:', error.message);
+    }
+  }
+
+  res.json({ success: true, models: allModels });
 }));
 
 // Pull/download a model with SSE for progress updates
@@ -180,7 +239,7 @@ app.post('/api/models/pull', validate(modelPullSchema), asyncHandler(async (req,
 
 // Chat endpoint with streaming response and RAG support
 app.post('/api/chat', validate(chatSchema), asyncHandler(async (req, res) => {
-  const { model, messages, systemPrompt, temperature, topP, maxTokens, sessionId, settings } = req.body;
+  const { model, messages, systemPrompt, temperature, topP, maxTokens, sessionId, settings, provider: requestedProvider } = req.body;
 
   // Set up SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
@@ -239,7 +298,23 @@ app.post('/api/chat', validate(chatSchema), asyncHandler(async (req, res) => {
       userMsgId = await saveMessageToSession(sessionId, userMsg);
     }
 
-    const stream = await ollamaService.chat(model, messagesToSend, options);
+    // Determine provider and get the appropriate service
+    const provider = requestedProvider || getProviderFromModel(model);
+    let providerService;
+
+    if (provider === 'ollama') {
+      providerService = ollamaService;
+    } else {
+      const apiKey = await apiKeyService.getKey(provider);
+      if (!apiKey) {
+        res.write(`data: ${JSON.stringify({ error: `No API key configured for ${provider}. Add one in Settings > Integrations.` })}\n\n`);
+        res.end();
+        return;
+      }
+      providerService = getProviderService(provider, apiKey);
+    }
+
+    const stream = await providerService.chat(model, messagesToSend, options);
 
     let assistantResponse = '';
 

@@ -4,6 +4,7 @@ import { loadTemplates } from '../data/templates';
 import { buildSystemPrompt, detectModeToggle } from '../utils/promptBuilder';
 import { saveSettings as saveSettingsAPI, loadSettings as loadSettingsAPI } from '../utils/settingsAPI';
 import { apiFetch } from '../utils/apiClient';
+import { getConfiguredProviders } from '../utils/apiKeyAPI';
 
 // Debounce timeout reference
 let saveTimeoutRef = null;
@@ -203,6 +204,9 @@ const useStore = create((set, get) => ({
     const modelToUse = state.settings.general.selectedModel || selectedModel;
 
     try {
+      // Determine provider from model name or settings
+      const modelProvider = state.settings.general.modelProvider || undefined;
+
       const chatPayload = {
         model: modelToUse,
         messages: conversationHistory
@@ -213,7 +217,8 @@ const useStore = create((set, get) => ({
         topP: state.settings.general.topP,
         maxTokens: state.settings.general.maxTokens,
         sessionId: state.currentSessionId,
-        settings: state.settings
+        settings: state.settings,
+        provider: modelProvider
       };
       const response = await apiFetch('/api/chat', {
         method: 'POST',
@@ -280,24 +285,38 @@ const useStore = create((set, get) => ({
   selectedModel: null,
   isDownloading: false,
   downloadProgress: { progress: 0, status: '', message: '' },
+  configuredProviders: { ollama: true, openai: false, anthropic: false },
 
   setModels: (models) => set({ models }),
   setSelectedModel: (model) => set({ selectedModel: model }),
   setIsDownloading: (isDownloading) => set({ isDownloading }),
   setDownloadProgress: (progress) => set({ downloadProgress: progress }),
 
-  // Fetch models from backend
+  // Fetch which cloud providers have API keys configured
+  fetchConfiguredProviders: async () => {
+    try {
+      const result = await getConfiguredProviders();
+      if (result.success) {
+        set({ configuredProviders: result.providers });
+      }
+    } catch (error) {
+      console.error('Failed to fetch configured providers:', error);
+    }
+  },
+
+  // Fetch models from backend (Ollama + cloud providers)
   fetchModels: async () => {
     try {
       const response = await fetch('/api/models');
       const data = await response.json();
 
       if (data.success) {
-        // Filter out embedding models (nomic-embed-text and other embedding-only models)
+        // Filter out embedding models (Ollama only)
         const chatModels = data.models.filter(model => {
+          // Cloud models pass through unfiltered
+          if (model.provider && model.provider !== 'ollama') return true;
+
           const modelName = model.name.toLowerCase();
-          // Exclude models that are specifically embedding models
-          // nomic-embed-text is used for RAG embeddings only, not chat
           const isEmbeddingModel =
             modelName.includes('nomic-embed') ||
             modelName.includes('all-minilm') ||
@@ -759,6 +778,7 @@ const useStore = create((set, get) => ({
     await store.loadSettings();
     await store.fetchTemplates();
     await store.checkHealth();
+    await store.fetchConfiguredProviders();
     await store.fetchModels();
     await store.loadSessions();
   }

@@ -1,5 +1,10 @@
-import Dropdown from '../ui/Dropdown';
 import TextField from '../ui/TextField';
+
+const PROVIDER_LABELS = {
+  ollama: 'Ollama (Local)',
+  openai: 'OpenAI',
+  anthropic: 'Anthropic (Claude)'
+};
 
 export default function GeneralSettingsPanel({ settings, onChange, models = [] }) {
   const { general } = settings;
@@ -14,13 +19,16 @@ export default function GeneralSettingsPanel({ settings, onChange, models = [] }
     });
   };
 
-  const modelOptions = [
-    { value: '', label: 'None (use current model)' },
-    ...models.map(model => ({
-      value: model.name,
-      label: model.name
-    }))
-  ];
+  // Group models by provider
+  const grouped = {};
+  for (const model of models) {
+    const provider = model.provider || 'ollama';
+    if (!grouped[provider]) grouped[provider] = [];
+    grouped[provider].push(model);
+  }
+  const providerOrder = ['ollama', 'openai', 'anthropic'];
+  const sortedProviders = providerOrder.filter(p => grouped[p]?.length > 0);
+  const hasMultipleProviders = sortedProviders.length > 1;
 
   return (
     <div className="general-settings-panel">
@@ -30,11 +38,30 @@ export default function GeneralSettingsPanel({ settings, onChange, models = [] }
           <p className="general-settings-panel__hint">
             The model to use by default. Leave empty to use currently selected model.
           </p>
-          <Dropdown
-            options={modelOptions}
+          <select
+            className="dropdown"
             value={general.selectedModel || ''}
-            onChange={(value) => handleFieldChange('selectedModel', value || null)}
-          />
+            onChange={(e) => handleFieldChange('selectedModel', e.target.value || null)}
+          >
+            <option value="">None (use current model)</option>
+            {hasMultipleProviders ? (
+              sortedProviders.map(provider => (
+                <optgroup key={provider} label={PROVIDER_LABELS[provider] || provider}>
+                  {grouped[provider].map(model => (
+                    <option key={model.name} value={model.name}>
+                      {model.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))
+            ) : (
+              models.map(model => (
+                <option key={model.name} value={model.name}>
+                  {model.name}
+                </option>
+              ))
+            )}
+          </select>
         </div>
       </div>
 

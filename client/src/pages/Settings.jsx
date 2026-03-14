@@ -18,6 +18,7 @@ import Button from '../components/ui/Button';
 import Dropdown from '../components/ui/Dropdown';
 import { exportSettings, importSettings, copySettingsToClipboard } from '../utils/settingsImportExport';
 import { DEFAULT_SETTINGS } from '../data/defaultSettings';
+import ApiKeyPanel from '../components/settings/ApiKeyPanel';
 export default function Settings() {
   // Get state and actions from Zustand store
   const settings = useStore((state) => state.settings);
@@ -419,9 +420,17 @@ export default function Settings() {
         {activeTab === 'integrations' && (
           <div className="settings__tab-content">
             <CollapsibleSection
+              title="Cloud API Keys"
+              description="Configure API keys for OpenAI and Anthropic cloud models"
+              defaultExpanded={true}
+            >
+              <ApiKeyPanel />
+            </CollapsibleSection>
+
+            <CollapsibleSection
               title="Import & Export"
               description="Backup, restore, and manage your settings"
-              defaultExpanded={true}
+              defaultExpanded={false}
             >
               <div className="settings__integration-actions">
                 <div className="settings__integration-group">

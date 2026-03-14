@@ -44,6 +44,8 @@ export const chatSchema = Joi.object({
       'string.pattern.base': 'Invalid session ID format'
     }),
 
+  provider: Joi.string().valid('ollama', 'openai', 'anthropic').optional(),
+
   settings: Joi.object().optional()
 });
 
@@ -102,6 +104,7 @@ export const settingsSchema = Joi.object({
 
     general: Joi.object({
       selectedModel: Joi.string().max(100).allow(null).optional(),
+      modelProvider: Joi.string().valid('ollama', 'openai', 'anthropic').allow(null).optional(),
       webSearch: Joi.boolean().optional(),
       chatSearch: Joi.boolean().optional(),
       memory: Joi.boolean().optional(),

@@ -47,6 +47,7 @@ export const DEFAULT_SETTINGS = {
 
   general: {
     selectedModel: null,
+    modelProvider: null, // 'ollama' | 'openai' | 'anthropic' | null (auto-detect from model name)
     webSearch: false,
     chatSearch: false,
     memory: true,

@@ -92,6 +92,16 @@ class DatabaseService {
     `);
 
 
+    // API keys table (encrypted cloud provider keys)
+    await this.db.exec(`
+      CREATE TABLE IF NOT EXISTS api_keys (
+        provider TEXT PRIMARY KEY,
+        encrypted_key TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // Create indexes
     await this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_messages_session

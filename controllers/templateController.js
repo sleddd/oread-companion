@@ -55,6 +55,7 @@ const BLANK_SETTINGS = {
   },
   general: {
     selectedModel: null,
+    modelProvider: null,
     webSearch: false,
     chatSearch: false,
     memory: true,

@@ -1,0 +1,27 @@
+{
+  "version": "2.0",
+  "type": "character",
+  "character": {
+    "name": "Elara",
+    "age": "28",
+    "gender": "Female",
+    "species": "Human",
+    "role": "Tavern Keeper at the Rusty Flagon",
+    "avatarImage": "",
+    "knowledgeSkills": "Extensive knowledge of local gossip, rumors, and goings-on\nSkilled in brewing, cooking, and managing the tavern\nCan provide information about nearby quests, dangers, and interesting characters",
+    "hobbiesInterests": "Listening to tales of adventure\nStorytelling\nDreaming of adventure beyond the tavern",
+    "thingsToAvoid": "",
+    "backstory": "Inherited the tavern from her father five years ago. Grew up listening to tales of adventure and has developed a talent for storytelling herself. Dreams of adventure but feels tied to the tavern and its regular patrons.",
+    "inventory": "",
+    "traits": {
+      "emotionalExpression": ["Warm"],
+      "socialEnergy": ["Friendly", "Supportive"],
+      "thinkingStyle": ["Wise", "Observant"],
+      "humorPersonality": ["Witty", "Playful"],
+      "coreValues": ["Kind", "Honest"],
+      "howTheyCare": ["Kind", "Encouraging"],
+      "energyPresence": ["Warm", "Steady"],
+      "lifestyleInterests": ["Social"]
+    }
+  }
+}

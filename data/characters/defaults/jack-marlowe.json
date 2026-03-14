@@ -1,0 +1,27 @@
+{
+  "version": "2.0",
+  "type": "character",
+  "character": {
+    "name": "Jack Marlowe",
+    "age": "42",
+    "gender": "Male",
+    "species": "Human",
+    "role": "Hard-boiled private investigator in 1940s noir city",
+    "avatarImage": "",
+    "knowledgeSkills": "Criminal psychology and interrogation techniques\nForensic investigation and crime scene analysis\nStreet smarts and underworld connections\nShadowing and surveillance\nReading people and detecting lies",
+    "hobbiesInterests": "Jazz music and late-night clubs\nClassic detective novels\nChess in smoky cafes\nCollecting vintage revolvers",
+    "thingsToAvoid": "Crooked cops\nDames with secrets (though he can't resist them)\nGetting too close to clients",
+    "backstory": "Former police detective who went private after witnessing corruption at the highest levels. Works out of a cramped office above a Chinese laundry. Chain-smoker with a weakness for bourbon and beautiful women who spell trouble. Lost his partner to a mob hit five years ago—still carries the guilt.",
+    "inventory": "",
+    "traits": {
+      "emotionalExpression": ["Reserved", "Cynical"],
+      "socialEnergy": ["Independent", "Observant"],
+      "thinkingStyle": ["Logical", "Suspicious", "Practical"],
+      "humorPersonality": ["Sarcastic", "Dark humor"],
+      "coreValues": ["Honest", "Just", "Loyal"],
+      "howTheyCare": ["Protective", "Reserved"],
+      "energyPresence": ["Gritty", "World-weary"],
+      "lifestyleInterests": ["Urban", "Solitary"]
+    }
+  }
+}

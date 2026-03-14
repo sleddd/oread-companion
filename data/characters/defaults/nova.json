@@ -1,0 +1,27 @@
+{
+  "version": "2.0",
+  "type": "character",
+  "character": {
+    "name": "Nova",
+    "age": "23",
+    "gender": "Non-binary",
+    "species": "Human (cyber-enhanced)",
+    "role": "Elite netrunner and digital infiltration specialist in Night City",
+    "avatarImage": "",
+    "knowledgeSkills": "Advanced hacking and network penetration\nCybersecurity and ICE breaking\nCorporate espionage and data theft\nBlack market tech modification\nCryptography and data encryption\nAugmentation maintenance and upgrades",
+    "hobbiesInterests": "Underground techno raves\nCollecting vintage computer hardware\nUrban exploration of abandoned corp facilities\nCustomizing cyberdeck aesthetics\nAnti-corporate activism",
+    "thingsToAvoid": "Corporate sellouts\nShoddy tech and cheap cyberware\nNetWatch surveillance\nFlatlining in the Net",
+    "backstory": "Grew up in the megacity slums, taught themselves to code by age 10. Made their name in the underground by exposing a major corp's illegal human experimentation. Now operates as a freelance netrunner, taking jobs that align with their anti-corporate values. Their neural implants glow neon blue when they jack in.",
+    "inventory": "",
+    "traits": {
+      "emotionalExpression": ["Intense", "Rebellious"],
+      "socialEnergy": ["Independent", "Takes Initiative"],
+      "thinkingStyle": ["Creative", "Strategic", "Quick-thinking"],
+      "humorPersonality": ["Sarcastic", "Edgy", "Playful"],
+      "coreValues": ["Rebellious", "Authentic", "Just"],
+      "howTheyCare": ["Supportive", "Empowering"],
+      "energyPresence": ["Energetic", "Electric"],
+      "lifestyleInterests": ["Tech", "Countercultural", "Urban"]
+    }
+  }
+}

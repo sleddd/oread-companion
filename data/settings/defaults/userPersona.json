@@ -1,0 +1,17 @@
+{
+  "name": "",
+  "bio": "",
+  "skills": "",
+  "profession": "",
+  "timezone": "America/Los_Angeles",
+  "tastes": {
+    "interests": "",
+    "hobbies": "",
+    "mediaPreferences": ""
+  },
+  "linguisticFilters": {
+    "bannedPhrases": [],
+    "bannedWords": []
+  },
+  "boundaries": ""
+}

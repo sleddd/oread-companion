@@ -1,0 +1,10 @@
+{
+  "assistantIdentity": {
+    "persona": "",
+    "communicationStyle": ""
+  },
+  "guardrails": {
+    "negativeConstraints": "",
+    "formattingPreferences": ""
+  }
+}

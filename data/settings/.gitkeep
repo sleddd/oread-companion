@@ -1,0 +1,8 @@
+# This directory contains user settings saved as individual JSON files
+# Files in this directory:
+# - mode.json - Current mode (roleplay/normal)
+# - roleplay.json - Roleplay mode settings (world, characters)
+# - utility.json - Utility mode settings (assistant identity, guardrails)
+# - userPersona.json - User persona and preferences
+# - general.json - General settings (model, temperature, etc.)
+# - meta.json - Metadata (template ID, last modified, version)

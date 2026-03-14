@@ -6,6 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const SETTINGS_DIR = path.join(__dirname, '..', 'data', 'settings');
+const DEFAULTS_DIR = path.join(SETTINGS_DIR, 'defaults');
 
 // Individual JSON files for each settings category
 const SETTINGS_FILES = {
@@ -15,6 +16,16 @@ const SETTINGS_FILES = {
   userPersona: path.join(SETTINGS_DIR, 'userPersona.json'),
   general: path.join(SETTINGS_DIR, 'general.json'),
   meta: path.join(SETTINGS_DIR, 'meta.json')
+};
+
+// Default template files
+const DEFAULT_FILES = {
+  mode: path.join(DEFAULTS_DIR, 'mode.json'),
+  roleplay: path.join(DEFAULTS_DIR, 'roleplay.json'),
+  utility: path.join(DEFAULTS_DIR, 'utility.json'),
+  userPersona: path.join(DEFAULTS_DIR, 'userPersona.json'),
+  general: path.join(DEFAULTS_DIR, 'general.json'),
+  meta: path.join(DEFAULTS_DIR, 'meta.json')
 };
 
 // Default settings structure
@@ -88,10 +99,41 @@ function ensureSettingsDir() {
   }
 }
 
+// Initialize user settings from defaults if they don't exist
+function initializeSettingsFromDefaults() {
+  ensureSettingsDir();
+
+  // Check if user has any settings
+  const hasAnyFile = Object.values(SETTINGS_FILES).some(f => fs.existsSync(f));
+
+  // If no user settings exist, copy from defaults
+  if (!hasAnyFile) {
+    console.log('📋 No user settings found. Copying from defaults...');
+
+    for (const [key, userPath] of Object.entries(SETTINGS_FILES)) {
+      const defaultPath = DEFAULT_FILES[key];
+
+      // Copy from defaults if default file exists
+      if (fs.existsSync(defaultPath)) {
+        const defaultData = fs.readFileSync(defaultPath, 'utf8');
+        fs.writeFileSync(userPath, defaultData, 'utf8');
+        console.log(`✅ Initialized ${key}.json from defaults`);
+      } else {
+        // Fallback to hardcoded defaults
+        fs.writeFileSync(userPath, JSON.stringify(DEFAULT_SETTINGS[key], null, 2), 'utf8');
+        console.log(`⚠️ No default template for ${key}, using hardcoded defaults`);
+      }
+    }
+
+    console.log('✅ Settings initialized from defaults');
+  }
+}
+
 // Get settings
 export async function getSettings(req, res) {
   try {
-    ensureSettingsDir();
+    // Initialize from defaults if user has no settings
+    initializeSettingsFromDefaults();
 
     // Load settings from individual JSON files
     const settings = {};
@@ -104,12 +146,6 @@ export async function getSettings(req, res) {
         // Use default if file doesn't exist
         settings[key] = DEFAULT_SETTINGS[key];
       }
-    }
-
-    // If no files exist at all, return full defaults
-    const hasAnyFile = Object.values(SETTINGS_FILES).some(f => fs.existsSync(f));
-    if (!hasAnyFile) {
-      return res.json({ success: true, settings: DEFAULT_SETTINGS });
     }
 
     res.json({ success: true, settings });
@@ -156,16 +192,45 @@ export async function deleteSettings(req, res) {
   try {
     ensureSettingsDir();
 
+    console.log('🔄 Resetting settings to defaults...');
+
     // Delete all individual JSON files
     for (const filePath of Object.values(SETTINGS_FILES)) {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
+        console.log(`🗑️ Deleted user settings file: ${path.basename(filePath)}`);
       }
     }
 
-    res.json({ success: true, settings: DEFAULT_SETTINGS });
+    // Copy from defaults (same as initialization)
+    console.log('📋 Copying from defaults folder...');
+    for (const [key, userPath] of Object.entries(SETTINGS_FILES)) {
+      const defaultPath = DEFAULT_FILES[key];
+
+      // Copy from defaults if default file exists
+      if (fs.existsSync(defaultPath)) {
+        const defaultData = fs.readFileSync(defaultPath, 'utf8');
+        fs.writeFileSync(userPath, defaultData, 'utf8');
+        console.log(`✅ Restored ${key}.json from defaults`);
+      } else {
+        // Fallback to hardcoded defaults
+        fs.writeFileSync(userPath, JSON.stringify(DEFAULT_SETTINGS[key], null, 2), 'utf8');
+        console.log(`⚠️ No default template for ${key}, using hardcoded defaults`);
+      }
+    }
+
+    // Load the freshly initialized settings
+    const settings = {};
+    for (const [key, filePath] of Object.entries(SETTINGS_FILES)) {
+      const data = fs.readFileSync(filePath, 'utf8');
+      settings[key] = JSON.parse(data);
+    }
+
+    console.log('✅ Settings reset to defaults successfully');
+
+    res.json({ success: true, settings });
   } catch (error) {
-    console.error('Error deleting settings:', error);
+    console.error('Error resetting settings:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 }

@@ -2,8 +2,31 @@
 node_modules/
 client/node_modules/
 
-# User data (root level only, not client/src/data)
-/data/
+# User data (exclude user customizations, keep defaults)
+# Keep: /data/characters/defaults/, /data/lorebook/, /data/avatars/, /data/settings/defaults/
+# Exclude: user settings, user characters, database, vector store
+
+# Exclude user settings (but keep defaults folder)
+/data/settings/*.json
+
+# Exclude user characters (but keep defaults folder)
+/data/characters/*.json
+
+# Exclude database files
+/data/chat.db
+/data/chat.db-shm
+/data/chat.db-wal
+
+# Exclude vector store
+/data/vector-store/
+
+# Exclude session encryption key
+/.oread-chat-key
+
+# Keep these folders (they should be in git):
+# /data/characters/defaults/  - Default character templates
+# /data/lorebook/             - Personality trait templates
+# /data/avatars/              - Default avatar images
 
 # Environment variables
 .env

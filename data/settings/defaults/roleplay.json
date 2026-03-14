@@ -1,0 +1,13 @@
+{
+  "world": {
+    "settingLore": "",
+    "openingScene": "",
+    "narratorVoice": "",
+    "pacing": "",
+    "hardRules": [],
+    "turnLogic": ""
+  },
+  "characterMode": "single",
+  "singleCharacterRef": "",
+  "multipleCharacterRefs": []
+}

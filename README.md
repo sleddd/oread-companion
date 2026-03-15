@@ -26,8 +26,8 @@ Everything is saved as a **world** you can switch between instantly. Jump from a
 - **Character system** — Name, backstory, personality traits, appearance, voice, inventory; single or multi-character modes
 - **Streaming chat** — Real-time token-by-token responses via SSE
 - **Chat management** — Create, name, search, and switch between chats from the header drawer
-- **Semantic memory** — FAISS vector search surfaces relevant context from long conversations (50+ messages)
-- **Auto-extraction** — AI analyzes roleplay conversations and suggests character detail updates
+- **Zero-inference memory** — Token-budgeted context window with first-message anchoring, user-pinnable messages, story notes, and NLP-extracted facts — no extra model calls
+- **Pinnable messages** — Pin key moments in any conversation to keep them in the AI's context permanently
 - **Worlds** — 22 built-in presets (roleplay + utility); save your own worlds and switch between them from the header
 - **Model management** — Browse, download, and switch Ollama models; HuggingFace GGUF support
 - **User persona** — Define yourself once and carry your identity across all worlds
@@ -41,9 +41,9 @@ Everything is saved as a **world** you can switch between instantly. Jump from a
 
 1. **Node.js v18+**
 2. **Ollama** — [ollama.com](https://ollama.com)
-3. **An embedding model** (for memory):
+3. **A chat model** (any Ollama model):
    ```bash
-   ollama pull nomic-embed-text
+   ollama pull llama2
    ```
 
 ### Install
@@ -84,9 +84,9 @@ Open **http://localhost:5173** and pick a template to get started.
 
 3. **Chat** — Click "Switch Chat" in the header to manage conversations, or start a new one from the chat drawer. The system prompt is built automatically from your world settings. Streaming responses appear token by token.
 
-4. **Memory kicks in** — After 50+ messages, semantic memory activates. The system retrieves relevant earlier context so the conversation stays coherent over long sessions.
+4. **Memory works automatically** — The context window system keeps conversations coherent without extra model calls. It anchors the opening exchange, includes any messages you've pinned, and auto-extracts key people, places, and events using lightweight NLP. A configurable token budget controls how much history is sent each turn.
 
-5. **Characters evolve** — In roleplay mode, the AI periodically analyzes the conversation and suggests updates to character details based on what's happened in the story.
+5. **Story notes** — Open the Story Notes panel on the right side of any chat to write free-text notes about the session. These are injected into the AI's context every turn, giving you direct control over what the AI remembers.
 
 ---
 
@@ -154,7 +154,7 @@ Open **http://localhost:5173** and pick a template to get started.
 
 **Red "Disconnected" status** — Run `ollama serve`, then refresh.
 
-**Memory not activating** — Pull `nomic-embed-text`, enable Memory in Settings > General, session needs 50+ messages.
+**Context too short** — Increase Context Budget in Settings > General > Generation Parameters (default 4096 tokens).
 
 **Chat not working** — Select a model in Settings > Model, ensure a session is active.
 
@@ -162,7 +162,7 @@ Open **http://localhost:5173** and pick a template to get started.
 
 ## Tech Stack
 
-Node.js, Express, SQLite, React 19, Vite, Zustand, SCSS, Ollama, FAISS
+Node.js, Express, SQLite, React 19, Vite, Zustand, SCSS, Ollama, compromise (NLP)
 
 For full architecture details, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 

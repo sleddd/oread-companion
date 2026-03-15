@@ -52,7 +52,8 @@ export const DEFAULT_SETTINGS = {
     temperature: 0.8,
     topP: 0.9,
     frequencyPenalty: 1.1,
-    maxTokens: 2048
+    maxTokens: 2048,
+    contextBudget: 4096
   },
 
   meta: {

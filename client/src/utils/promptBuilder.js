@@ -26,6 +26,7 @@ function buildRoleplayPrompt(settings, isFirstMessage) {
 
   // 1. Resolve Character (Ensuring universal "The Character" framing)
   const mainCharacter = _loadedCharacters?.[0] || { name: 'The Character' };
+  const firstName = mainCharacter.name.split(' ')[0];
   const identity = [mainCharacter.age, mainCharacter.gender, mainCharacter.species].filter(Boolean).join(', ');
 
   // 2. Resolve Narrative Style (default to companion)
@@ -55,12 +56,13 @@ function buildRoleplayPrompt(settings, isFirstMessage) {
 
   // ── IDENTITY & VOICE ──
   prompt += `YOUR IDENTITY & VOICE:\n`;
-  prompt += `You are ${mainCharacter.name}. Every response is an expression of ${mainCharacter.name}'s unique perspective.`;
+  prompt += `You are ${mainCharacter.name}. Every response is an expression of ${firstName}'s unique perspective.`;
   if (traitsText) {
-    prompt += ` Ground your output in ${mainCharacter.name}'s personality traits, matching their word choice, tone, and sentence rhythm to the character profile.`;
+    prompt += ` Ground your output in ${firstName}'s personality traits, matching their word choice, tone, and sentence rhythm to the character profile.`;
   }
   prompt += `\n`;
-  prompt += `NAME: ${mainCharacter.name}\n`;
+  prompt += `FULL NAME: ${mainCharacter.name}\n`;
+  prompt += `USE IN NARRATION: ${firstName} (use first name only — never repeat the full name)\n`;
   if (identity) prompt += `YOUR IDENTITY: ${identity}\n`;
   if (mainCharacter.role) prompt += `YOUR ROLE: ${mainCharacter.role}\n`;
   if (traitsText) prompt += `YOUR PERSONALITY:\n${traitsText}\n`;
@@ -77,7 +79,7 @@ function buildRoleplayPrompt(settings, isFirstMessage) {
       if (char.role) prompt += ` — ${char.role}`;
       prompt += `\n`;
     }
-    prompt += `${mainCharacter.name} is the primary voice. Supporting characters may appear in your narration when the scene calls for it, but ${mainCharacter.name} is always the one speaking.\n\n`;
+    prompt += `${firstName} is the primary voice. Supporting characters may appear in your narration when the scene calls for it, but ${firstName} is always the one speaking.\n\n`;
   }
 
   // ── INTERACTION & AGENCY ──
@@ -86,7 +88,7 @@ function buildRoleplayPrompt(settings, isFirstMessage) {
   if (characterMode === 'multi') {
     const otherNames = allCharNames.filter(n => n !== mainCharacter.name);
     if (otherNames.length > 0) {
-      prompt += `Active Persona: ${mainCharacter.name} is the sole active character for this interaction. All previous patterns from ${otherNames.join(' or ')} are superseded by ${mainCharacter.name}'s current presence and voice.\n`;
+      prompt += `Active Persona: ${firstName} is the sole active character for this interaction. All previous patterns from ${otherNames.join(' or ')} are superseded by ${firstName}'s current presence and voice.\n`;
     }
   }
   prompt += `\n`;
@@ -97,8 +99,8 @@ function buildRoleplayPrompt(settings, isFirstMessage) {
   if (narrativeStyle) {
     prompt += `Style: ${narrativeStyle.frame}. ${narrativeStyle.format}. ${narrativeStyle.constraint}.\n`;
   }
-  prompt += `Formatting: Use parenthetical emotes for physical actions, e.g. (leans back). Keep tone grounded and authentic.\n`;
-  prompt += `Pure Output: Every word generated must exist within the story's world. Your responses consist entirely of the unfolding scene and ${mainCharacter.name}'s contributions to it.\n\n`;
+  prompt += `Formatting: Use parenthetical emotes for physical actions, e.g. (leans back). Keep tone grounded and authentic.\n Only use the character's name in narration when necessary for clarity. Never use the character's name in dialogue unless it fits naturally.\n`;
+  prompt += `Pure Output: Every word generated must exist within the story's world. Your responses consist entirely of the unfolding scene and ${firstName}'s contributions to it.\n`;
 
 
   // Language filters (only if user has configured them)
@@ -143,15 +145,20 @@ function buildRoleplayPrompt(settings, isFirstMessage) {
     Do not show this reasoning in your response. Use it to shape HOW you respond.\n\n`;
   } else {
     prompt += `TURN PACING:\n`;
-    prompt += `- Each reply should answer the user's latest input, add one in-scene development, and leave room for the user's next move.\n`;
-    prompt += `- Open scenes with immediate context, continue scenes with one consequential beat per turn, and end turns at a natural handoff point.\n`;
+    prompt += `- Each reply should react to ${userName}'s latest input and add one in-scene beat from ${firstName}'s perspective.\n`;
+    prompt += `- Stop at a natural handoff point where ${userName} can speak or act next. Do not narrate what happens after the handoff.\n`;
     prompt += `- Do not complete the full sequence of events in one response; progress the interaction in discrete turns.\n`;
-    prompt += `- Treat every turn as part of a live exchange: react, develop, then hand back.\n\n`;
+    prompt += `- Treat every turn as a live exchange: react, develop, then hand back.\n\n`;
   }
 
   if (world.hardRules && world.hardRules.length > 0) {
     prompt += `HARD RULES:\n${world.hardRules.map(r => `- ${r}`).join('\n')}\n\n`;
   }
+
+  prompt += `USER AGENCY (STRICT):\n`;
+  prompt += `- You control ${firstName}'s words, thoughts, and actions only.\n`;
+  prompt += `- ${userName}'s actions, decisions, movements, and dialogue belong entirely to ${userName}. Do not write what ${userName} does, says, thinks, or feels.\n`;
+  prompt += `- End your turn at a point where ${userName} can naturally respond or act. Leave space — do not resolve the scene for them.\n\n`;
 
   prompt += `MODE TOGGLE:\n/chat: Utility Mode | /play: Roleplay Mode`;
 

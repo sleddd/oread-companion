@@ -177,8 +177,8 @@ const useStore = create((set, get) => ({
     const systemPrompt = buildSystemPrompt(settingsWithCharacters, modeForThisMessage, isFirstMessage);
     console.log('[System Prompt]', systemPrompt);
 
-    // Determine model (use settings default if set, otherwise use selected model)
-    const modelToUse = state.settings.general.selectedModel || selectedModel;
+    // Determine model (dropdown selection wins, fall back to settings default)
+    const modelToUse = selectedModel || state.settings.general.selectedModel;
 
     try {
       const chatPayload = {
@@ -210,9 +210,7 @@ const useStore = create((set, get) => ({
       const decoder = new TextDecoder();
 
       let assistantMessage = { role: 'assistant', content: '', timestamp: new Date() };
-      set((state) => ({
-        messages: [...state.messages, assistantMessage]
-      }));
+      let assistantMessageAdded = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -230,13 +228,50 @@ const useStore = create((set, get) => ({
               break;
             }
 
-            if (data.message && data.message.content) {
-              assistantMessage.content += data.message.content;
+            // Handle metadata events (message IDs for pinning)
+            if (data.meta === 'user_saved') {
               set((state) => {
                 const newMessages = [...state.messages];
-                newMessages[newMessages.length - 1] = { ...assistantMessage };
+                // Find the last user message and assign its ID
+                for (let i = newMessages.length - 1; i >= 0; i--) {
+                  if (newMessages[i].role === 'user' && !newMessages[i].id) {
+                    newMessages[i] = { ...newMessages[i], id: data.messageId };
+                    break;
+                  }
+                }
                 return { messages: newMessages };
               });
+              continue;
+            }
+
+            if (data.meta === 'assistant_saved') {
+              set((state) => {
+                const newMessages = [...state.messages];
+                // Assign ID to the assistant message (last)
+                const lastIdx = newMessages.length - 1;
+                if (lastIdx >= 0 && newMessages[lastIdx].role === 'assistant') {
+                  newMessages[lastIdx] = { ...newMessages[lastIdx], id: data.messageId };
+                }
+                return { messages: newMessages };
+              });
+              continue;
+            }
+
+            if (data.message && data.message.content) {
+              assistantMessage.content += data.message.content;
+              if (!assistantMessageAdded) {
+                // Add the assistant bubble only once we have content
+                assistantMessageAdded = true;
+                set((state) => ({
+                  messages: [...state.messages, { ...assistantMessage }]
+                }));
+              } else {
+                set((state) => {
+                  const newMessages = [...state.messages];
+                  newMessages[newMessages.length - 1] = { ...assistantMessage };
+                  return { messages: newMessages };
+                });
+              }
             }
           }
         }
@@ -484,10 +519,10 @@ const useStore = create((set, get) => ({
           currentSession: data.session,
           messages: []  // Clear current messages
         });
-        //console.log('✅ Session selected:', sessionId);
 
-        // Load message history
+        // Load message history and story notes
         await get().loadMessageHistory(sessionId);
+        await get().loadStoryNotes(sessionId);
       }
     } catch (error) {
       console.error('Failed to select session:', error);
@@ -548,8 +583,10 @@ const useStore = create((set, get) => ({
 
       if (data.success) {
         const messages = data.messages.map(m => ({
+          id: m.id,
           role: m.role,
           content: m.content,
+          pinned: !!m.pinned,
           timestamp: new Date(m.timestamp)
         }));
 
@@ -566,6 +603,83 @@ const useStore = create((set, get) => ({
     } catch (error) {
       //console.error('Failed to load message history:', error);
       set({ historyLoading: false });
+    }
+  },
+
+  // ==========================================
+  // PIN MESSAGE
+  // ==========================================
+  togglePinMessage: async (messageId) => {
+    const state = get();
+    const sessionId = state.currentSessionId;
+    if (!sessionId || !messageId) return;
+
+    // Find the message and its current pinned state
+    const msgIndex = state.messages.findIndex(m => m.id === messageId);
+    if (msgIndex === -1) return;
+
+    const newPinned = !state.messages[msgIndex].pinned;
+
+    // Optimistic update
+    set((s) => {
+      const newMessages = [...s.messages];
+      newMessages[msgIndex] = { ...newMessages[msgIndex], pinned: newPinned };
+      return { messages: newMessages };
+    });
+
+    try {
+      const response = await apiFetch(`/api/sessions/${sessionId}/messages/${messageId}/pin`, {
+        method: 'PATCH',
+        body: JSON.stringify({ pinned: newPinned })
+      });
+      const data = await response.json();
+      if (!data.success) {
+        // Revert on failure
+        set((s) => {
+          const newMessages = [...s.messages];
+          newMessages[msgIndex] = { ...newMessages[msgIndex], pinned: !newPinned };
+          return { messages: newMessages };
+        });
+      }
+    } catch (error) {
+      // Revert on failure
+      set((s) => {
+        const newMessages = [...s.messages];
+        newMessages[msgIndex] = { ...newMessages[msgIndex], pinned: !newPinned };
+        return { messages: newMessages };
+      });
+      console.error('Failed to toggle pin:', error);
+    }
+  },
+
+  // ==========================================
+  // STORY NOTES
+  // ==========================================
+  storyNotes: '',
+
+  loadStoryNotes: async (sessionId) => {
+    if (!sessionId) return;
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/notes`);
+      const data = await response.json();
+      if (data.success) {
+        set({ storyNotes: data.notes || '' });
+      }
+    } catch (error) {
+      console.error('Failed to load story notes:', error);
+    }
+  },
+
+  saveStoryNotes: async (sessionId, notes) => {
+    if (!sessionId) return;
+    set({ storyNotes: notes });
+    try {
+      await apiFetch(`/api/sessions/${sessionId}/notes`, {
+        method: 'PUT',
+        body: JSON.stringify({ notes })
+      });
+    } catch (error) {
+      console.error('Failed to save story notes:', error);
     }
   },
 

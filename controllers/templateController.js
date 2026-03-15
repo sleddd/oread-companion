@@ -76,7 +76,8 @@ const BLANK_SETTINGS = {
     temperature: 0.7,
     topP: 0.9,
     frequencyPenalty: 1.1,
-    maxTokens: 2048
+    maxTokens: 2048,
+    contextBudget: 4096
   },
   meta: {
     templateId: null,

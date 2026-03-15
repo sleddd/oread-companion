@@ -1,7 +1,7 @@
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import database from '../services/database.js';
-import { validate, validateUUID, sessionCreateSchema, sessionUpdateSchema } from '../middleware/validation.js';
+import { validate, validateUUID, sessionCreateSchema, sessionUpdateSchema, messagePinSchema, storyNotesSchema } from '../middleware/validation.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = express.Router();
@@ -223,6 +223,58 @@ router.post('/:id/messages', validateUUID('id'), asyncHandler(async (req, res) =
       timestamp: messageTimestamp
     }
   });
+}));
+
+// Pin/unpin a message
+router.patch('/:sessionId/messages/:messageId/pin',
+  validateUUID('sessionId'),
+  validateUUID('messageId'),
+  validate(messagePinSchema),
+  asyncHandler(async (req, res) => {
+    const { sessionId, messageId } = req.params;
+    const { pinned } = req.body;
+
+    const result = await database.run(
+      `UPDATE messages SET pinned = ? WHERE id = ? AND session_id = ?`,
+      [pinned ? 1 : 0, messageId, sessionId]
+    );
+
+    if (result.changes === 0) {
+      return res.status(404).json({ success: false, error: 'Message not found' });
+    }
+
+    res.json({ success: true, messageId, pinned });
+  })
+);
+
+// Get story notes for session
+router.get('/:id/notes', validateUUID('id'), asyncHandler(async (req, res) => {
+  const session = await database.get(
+    'SELECT story_notes FROM sessions WHERE id = ?',
+    [req.params.id]
+  );
+
+  if (!session) {
+    return res.status(404).json({ success: false, error: 'Session not found' });
+  }
+
+  res.json({ success: true, notes: session.story_notes || '' });
+}));
+
+// Update story notes for session
+router.put('/:id/notes', validateUUID('id'), validate(storyNotesSchema), asyncHandler(async (req, res) => {
+  const { notes } = req.body;
+
+  const result = await database.run(
+    `UPDATE sessions SET story_notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    [notes, req.params.id]
+  );
+
+  if (result.changes === 0) {
+    return res.status(404).json({ success: false, error: 'Session not found' });
+  }
+
+  res.json({ success: true, notes });
 }));
 
 // Get messages for session

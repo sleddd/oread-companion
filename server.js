@@ -10,6 +10,8 @@ import { CONFIG, validateConfig } from './config/index.js';
 import ollamaService from './services/ollama.js';
 import database from './services/database.js';
 import { initializeCharacters } from './controllers/characterController.js';
+import { selectMessages } from './services/contextWindow.js';
+import { extractFacts } from './services/factExtractor.js';
 
 // Routes
 import sessionsRouter from './routes/sessions.js';
@@ -176,7 +178,7 @@ app.post('/api/models/pull', validate(modelPullSchema), asyncHandler(async (req,
 
 // Chat endpoint with streaming response
 app.post('/api/chat', validate(chatSchema), asyncHandler(async (req, res) => {
-  const { model, messages, systemPrompt, temperature, topP, frequencyPenalty, maxTokens, sessionId } = req.body;
+  const { model, messages, systemPrompt, temperature, topP, frequencyPenalty, maxTokens, sessionId, settings } = req.body;
 
   // Set up SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
@@ -202,12 +204,66 @@ app.post('/api/chat', validate(chatSchema), asyncHandler(async (req, res) => {
     }
 
     // Save user message before streaming so it's persisted regardless of what follows
+    let userMessageId = null;
     if (sessionId) {
       const userMsg = messages[messages.length - 1];
-      await saveMessageToSession(sessionId, userMsg);
+      userMessageId = await saveMessageToSession(sessionId, userMsg);
+      // Emit user message ID so client can support pinning
+      res.write(`data: ${JSON.stringify({ meta: 'user_saved', messageId: userMessageId })}\n\n`);
     }
 
-    const stream = await ollamaService.chat(model, messages, options);
+    // Determine messages to send: use context window if we have a session
+    let messagesToSend = messages;
+    let finalSystemPrompt = systemPrompt;
+
+    if (sessionId) {
+      try {
+        // Load all messages from DB with pinned flags
+        const dbMessages = await database.all(
+          `SELECT role, content, pinned FROM messages WHERE session_id = ? ORDER BY timestamp ASC`,
+          [sessionId]
+        );
+
+        // Load story notes + extracted facts from session
+        const session = await database.get(
+          `SELECT story_notes, extracted_facts FROM sessions WHERE id = ?`,
+          [sessionId]
+        );
+
+        const storyNotes = session?.story_notes || '';
+        let extractedFactsData = [];
+        try {
+          extractedFactsData = JSON.parse(session?.extracted_facts || '[]');
+        } catch (e) { /* invalid JSON, ignore */ }
+
+        const contextBudget = settings?.general?.contextBudget || 4096;
+
+        const { messages: windowedMessages, contextBlock } = selectMessages({
+          messages: dbMessages.map(m => ({ role: m.role, content: m.content, pinned: !!m.pinned })),
+          systemPrompt: systemPrompt || '',
+          storyNotes,
+          extractedFacts: extractedFactsData,
+          contextBudget
+        });
+
+        messagesToSend = windowedMessages;
+
+        // Append context block to system prompt
+        if (contextBlock) {
+          finalSystemPrompt = (systemPrompt || '') + '\n\n' + contextBlock;
+          options.systemPrompt = finalSystemPrompt;
+        }
+
+        if (CONFIG.isDevelopment) {
+          console.log(`📦 Context window: ${dbMessages.length} total → ${windowedMessages.length} selected (budget: ${contextBudget})`);
+        }
+      } catch (err) {
+        console.error('Context window error, falling back to raw messages:', err);
+        // Fall back to original messages
+      }
+    }
+
+    const stream = await ollamaService.chat(model, messagesToSend, options);
 
     let assistantResponse = '';
 
@@ -220,14 +276,42 @@ app.post('/api/chat', validate(chatSchema), asyncHandler(async (req, res) => {
 
     // Save assistant message before ending the response so the DB is consistent
     // before the client considers the turn complete
+    let assistantMessageId = null;
     if (sessionId) {
       const assistantMsg = {
         role: 'assistant',
         content: assistantResponse,
         timestamp: new Date().toISOString()
       };
-      await saveMessageToSession(sessionId, assistantMsg);
+      assistantMessageId = await saveMessageToSession(sessionId, assistantMsg);
       console.log('✅ Messages saved to session');
+
+      // Emit assistant message ID
+      res.write(`data: ${JSON.stringify({ meta: 'assistant_saved', messageId: assistantMessageId })}\n\n`);
+
+      // Background: extract facts from new messages (no inference, pure NLP)
+      try {
+        const userContent = messages[messages.length - 1]?.content || '';
+        const turnNumber = await database.get(
+          `SELECT COUNT(*) as count FROM messages WHERE session_id = ?`,
+          [sessionId]
+        );
+        const newFacts = extractFacts(userContent, assistantResponse, Math.floor((turnNumber?.count || 0) / 2));
+        if (newFacts.length > 0) {
+          const session = await database.get(
+            `SELECT extracted_facts FROM sessions WHERE id = ?`,
+            [sessionId]
+          );
+          const existing = JSON.parse(session?.extracted_facts || '[]');
+          const merged = [...existing, ...newFacts].slice(-50);
+          await database.run(
+            `UPDATE sessions SET extracted_facts = ? WHERE id = ?`,
+            [JSON.stringify(merged), sessionId]
+          );
+        }
+      } catch (err) {
+        console.error('Fact extraction error:', err);
+      }
     }
 
     res.end();

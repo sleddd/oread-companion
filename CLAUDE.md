@@ -8,7 +8,7 @@ Full-stack local AI chat app with Ollama integration. Streaming chat, roleplay/c
 
 - **Backend**: Node.js (ES Modules), Express, SQLite (WAL mode), SSE streaming
 - **Frontend**: React 19, Vite, Zustand, SCSS (`global.scss` + `*.module.scss`)
-- **AI**: Ollama (`ollama` npm package)
+- **AI**: Ollama (`ollama` npm package), `compromise` (rule-based NLP for fact extraction)
 - **Security**: Helmet, express-rate-limit, Joi validation, CSRF tokens, express-session
 
 ## Running
@@ -32,8 +32,40 @@ Settings = a special "active" template at `data/templates/active.json`.
 ```
 sendMessage() → build system prompt (promptBuilder.js) → load characters if needed
   → POST /api/chat { model, messages, systemPrompt, temperature, topP, maxTokens, sessionId, settings }
+  → load DB messages + context window selection (contextWindow.js)
+  → append story notes + extracted facts to system prompt
   → ollamaService.chat() → SSE stream → save to SQLite
+  → background: NLP fact extraction (factExtractor.js) → update session
 ```
+
+### Zero-Inference Memory System
+No additional model inference — all context management is rule-based.
+
+**5 components sharing a single token budget** (priority order):
+1. **System prompt** — always included, deducted first
+2. **Story notes + extracted facts** — injected as `[Story Notes]` / `[Session Memory]` block
+3. **Anchors** — first user message + first assistant reply (sets scene)
+4. **Pinned messages** — user-pinned key moments, newest-first when over budget
+5. **Recent messages** — fills remaining budget, newest→oldest
+
+**Key files:**
+- `services/contextWindow.js` — pure function `selectMessages()`, token-budgeted sliding window
+- `services/factExtractor.js` — `compromise` NLP library extracts people, places, events, facts (capped at 50 per session)
+- `settings.general.contextBudget` — configurable token budget (default 4096, min 512, max 131072)
+
+**API endpoints:**
+- `PATCH /api/sessions/:sessionId/messages/:messageId/pin` — toggle pin (`{ pinned: true|false }`)
+- `GET /api/sessions/:id/notes` — read story notes
+- `PUT /api/sessions/:id/notes` — save story notes (`{ notes: string }`, max 10000 chars)
+
+**SSE metadata events** emitted during chat:
+- `{ meta: 'user_saved', messageId }` — after user message saved to DB
+- `{ meta: 'assistant_saved', messageId }` — after assistant message saved to DB
+
+**UI:**
+- Pin button on each message (visible on hover, teal when active, teal left border on pinned)
+- Story Notes slide-out panel on right side of chat page (debounced auto-save, per-session)
+- Context Budget number input in Settings > General > Generation Parameters
 
 ### Zustand Store Patterns
 - Always use selectors: `useStore((s) => s.x)` — never `useStore().property`
@@ -41,8 +73,8 @@ sendMessage() → build system prompt (promptBuilder.js) → load characters if 
 - `sendMessage()` handles the full chat flow including SSE streaming
 
 ### DB Tables
-- `sessions` — id, name, character_name, mode, settings_snapshot, message_count, archived
-- `messages` — id, session_id, role, content, timestamp
+- `sessions` — id, name, character_name, mode, settings_snapshot, message_count, archived, story_notes, extracted_facts
+- `messages` — id, session_id, role, content, timestamp, pinned
 
 ## Adding a New Setting Field
 1. `client/src/data/defaultSettings.js` — add to `DEFAULT_SETTINGS`
@@ -73,6 +105,9 @@ Users can save current settings as a named "world" template. Stored as JSON in `
 6. **SSE parsing** — always check `line.startsWith('data: ')` before JSON.parse
 7. WAL files (`.db-shm`, `.db-wal`) are normal; don't delete while app is running
 8. CSRF bypassed in dev when `ENABLE_AUTH=false` (default). `apiFetch()` handles CSRF token injection
+9. **Model selection priority** — dropdown selection wins over `settings.general.selectedModel` (which is the fallback default)
+10. **Story notes race condition** — handled by flushing pending debounced saves on session switch and capturing `sessionId` at typing time
+11. **`contextBudget`** must be in `settingsSchema` (see gotcha 3) — added to `general` object
 
 ## Environment Variables
 `PORT` (3001), `OLLAMA_URL` (localhost:11434), `OLLAMA_CHAT_MODEL` (llama2), `SESSION_SECRET` (auto-gen), `OREAD_ENCRYPTION_PASSPHRASE` (auto-gen, required in prod), `ENABLE_AUTH` (false), `ENABLE_CSRF` (true), `CORS_ORIGINS` (localhost:5173,localhost:3000)

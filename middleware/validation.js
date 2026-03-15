@@ -95,6 +95,16 @@ export const userTemplateSchema = Joi.object({
   settings: Joi.object().required()
 });
 
+// Message pin validation
+export const messagePinSchema = Joi.object({
+  pinned: Joi.boolean().required()
+});
+
+// Story notes validation
+export const storyNotesSchema = Joi.object({
+  notes: Joi.string().max(10000).allow('').required()
+});
+
 // Settings validation
 export const settingsSchema = Joi.object({
   settings: Joi.object({
@@ -118,7 +128,8 @@ export const settingsSchema = Joi.object({
       temperature: Joi.number().min(0).max(2).optional(),
       topP: Joi.number().min(0).max(1).optional(),
       frequencyPenalty: Joi.number().min(0).max(2).optional(),
-      maxTokens: Joi.number().min(1).max(100000).optional()
+      maxTokens: Joi.number().min(1).max(100000).optional(),
+      contextBudget: Joi.number().integer().min(512).max(131072).optional()
     }).optional(),
 
     meta: Joi.object().optional()
@@ -244,4 +255,6 @@ export default {
   characterIdSchema,
   settingsSchema,
   userTemplateSchema,
+  messagePinSchema,
+  storyNotesSchema,
 };

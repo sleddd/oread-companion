@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import useStore from '../store/useStore';
 import ChatInterface from '../components/chat/ChatInterface';
 
@@ -15,6 +15,10 @@ export default function ChatPage() {
   // Ref to track the last loaded session ID
   const lastLoadedSessionId = useRef(null);
 
+  // Story notes panel
+  const [showStoryNotes, setShowStoryNotes] = useState(false);
+  const storyNotesSaveRef = useRef(null);
+
   // Get state and actions from Zustand store
   const messages = useStore((state) => state.messages);
   const selectedModel = useStore((state) => state.selectedModel);
@@ -24,15 +28,30 @@ export default function ChatPage() {
   const currentSessionId = useStore((state) => state.currentSessionId);
   const createSession = useStore((state) => state.createSession);
   const loadMessageHistory = useStore((state) => state.loadMessageHistory);
+  const storyNotes = useStore((state) => state.storyNotes);
+  const saveStoryNotes = useStore((state) => state.saveStoryNotes);
+  const loadStoryNotes = useStore((state) => state.loadStoryNotes);
 
-  // Load messages when session changes
+  // Load messages and story notes when session changes
   useEffect(() => {
-    // If session changed and we have a session ID, reload messages
     if (currentSessionId && currentSessionId !== lastLoadedSessionId.current) {
+      // Flush any pending story notes save for the previous session
+      if (storyNotesSaveRef.current) {
+        clearTimeout(storyNotesSaveRef.current);
+        storyNotesSaveRef.current = null;
+        // Save immediately to the OLD session before switching
+        const prevSessionId = lastLoadedSessionId.current;
+        const pendingNotes = useStore.getState().storyNotes;
+        if (prevSessionId && pendingNotes) {
+          saveStoryNotes(prevSessionId, pendingNotes);
+        }
+      }
+
       lastLoadedSessionId.current = currentSessionId;
       loadMessageHistory(currentSessionId);
+      loadStoryNotes(currentSessionId);
     }
-  }, [currentSessionId, loadMessageHistory]);
+  }, [currentSessionId, loadMessageHistory, loadStoryNotes, saveStoryNotes]);
 
   // Auto-create session on first message if none exists
   useEffect(() => {
@@ -63,16 +82,43 @@ export default function ChatPage() {
     sendMessage(content, selectedModel);
   };
 
-  // Get character info from settings (always use main character if configured)
-  // Priority: Single Character > First Multiple Character > Default
-  const singleCharacter = settings.roleplay?.singleCharacter;
-  const multipleCharacters = settings.roleplay?.multipleCharacters || [];
-  const mainCharacter = settings.roleplay?.characterMode === 'single'
-    ? singleCharacter
-    : multipleCharacters[0]; // Use first character from multiple mode
+  const handleStoryNotesChange = useCallback((e) => {
+    const notes = e.target.value;
+    // Capture session ID at the moment the user types, not when the debounce fires
+    const targetSessionId = currentSessionId;
 
-  const characterName = mainCharacter?.identity?.name || 'Oread Assistant';
-  const characterAvatar = mainCharacter?.appearance?.avatarImage || DEFAULT_AVATAR;
+    // Update local state immediately via store
+    useStore.setState({ storyNotes: notes });
+
+    // Debounced save to backend
+    if (storyNotesSaveRef.current) {
+      clearTimeout(storyNotesSaveRef.current);
+    }
+    storyNotesSaveRef.current = setTimeout(() => {
+      if (targetSessionId) {
+        saveStoryNotes(targetSessionId, notes);
+      }
+      storyNotesSaveRef.current = null;
+    }, 1000);
+  }, [currentSessionId, saveStoryNotes]);
+
+  // Get character info from settings (always use main character if configured)
+  // Priority: Single Character > Active Multiple Character > Default
+  const singleCharacter = settings.roleplay?.character;
+  const multipleCharacters = settings.roleplay?.characters || [];
+  const activeCharacterIndex = settings.roleplay?.activeCharacterIndex || 0;
+  const isMultiMode = settings.roleplay?.characterMode === 'multi';
+
+  const mainCharacter = isMultiMode
+    ? multipleCharacters[activeCharacterIndex] || multipleCharacters[0]
+    : singleCharacter;
+
+  const supportingCharacters = isMultiMode
+    ? multipleCharacters.filter((_, i) => i !== activeCharacterIndex)
+    : [];
+
+  const characterName = mainCharacter?.name || 'Oread Assistant';
+  const characterAvatar = mainCharacter?.avatarImage || DEFAULT_AVATAR;
 
   return (
     <div className="chat-page">
@@ -100,17 +146,23 @@ export default function ChatPage() {
         </div>
         <div className="chat-page__character-name">{characterName}</div>
 
-        {/* TODO: Add music options
-        <div className="chat-page__track-selector">
-          <label>Select a track</label>
-          <select defaultValue="model-ambient">
-            <option value="model-ambient">Model Ambient</option>
-            <option value="background-ambient">Background Ambient</option>
-            <option value="nature-sounds">Nature Sounds</option>
-            <option value="cafe-ambient">Cafe Ambient</option>
-          </select>
-        </div>
-        */}
+        {supportingCharacters.length > 0 && (
+          <div className="chat-page__supporting-characters">
+            {supportingCharacters.map((char, i) => (
+              <div key={char?.name || i} className="chat-page__supporting-character">
+                <div className="chat-page__supporting-avatar">
+                  <img
+                    src={char?.avatarImage || DEFAULT_AVATAR}
+                    alt={char?.name || 'Character'}
+                  />
+                </div>
+                <span className="chat-page__supporting-name">
+                  {char?.name || 'Unnamed'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="chat-page__main-area">
@@ -121,6 +173,32 @@ export default function ChatPage() {
           selectedModel={selectedModel}
         />
       </div>
+
+      {/* Story Notes Panel */}
+      {currentSessionId && (
+        <div className={`chat-page__story-notes ${showStoryNotes ? 'chat-page__story-notes--open' : ''}`}>
+          <button
+            className="chat-page__story-notes-toggle"
+            onClick={() => setShowStoryNotes(!showStoryNotes)}
+          >
+            {showStoryNotes ? '▶' : '◀'} Story Notes
+          </button>
+          {showStoryNotes && (
+            <div className="chat-page__story-notes-content">
+              <textarea
+                className="chat-page__story-notes-textarea"
+                value={storyNotes}
+                onChange={handleStoryNotesChange}
+                placeholder="Write notes about this session... These will be included in the AI's context to help maintain continuity."
+                maxLength={10000}
+              />
+              <div className="chat-page__story-notes-count">
+                {storyNotes.length} / 10000
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
     </div>
   );

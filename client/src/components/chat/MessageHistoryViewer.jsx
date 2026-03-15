@@ -14,6 +14,7 @@ export default function MessageHistoryViewer() {
   const historyLoading = useStore((state) => state.historyLoading);
   const historyHasMore = useStore((state) => state.historyHasMore);
   const loadMessageHistory = useStore((state) => state.loadMessageHistory);
+  const togglePinMessage = useStore((state) => state.togglePinMessage);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -84,10 +85,13 @@ export default function MessageHistoryViewer() {
         {/* Messages */}
         {messages.map((message, index) => (
           <ChatBubble
-            key={index}
+            key={message.id || index}
             message={message.content}
             role={message.role}
             timestamp={message.timestamp}
+            id={message.id}
+            pinned={message.pinned}
+            onTogglePin={togglePinMessage}
           />
         ))}
       </div>

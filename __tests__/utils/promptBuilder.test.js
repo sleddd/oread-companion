@@ -302,7 +302,7 @@ describe('buildSystemPrompt – multi-character switching', () => {
       makeChar('Zara', { role: 'Rogue' })
     ]);
     const prompt = buildSystemPrompt(settings, 'roleplay');
-    expect(prompt).toContain('SUPPORTING CAST');
+    expect(prompt).toContain('SUPPORTING CHARACTERS');
     expect(prompt).toContain('Kael');
     expect(prompt).toContain('Zara');
     expect(prompt).toContain('Mira is the primary voice');
@@ -337,7 +337,8 @@ describe('buildSystemPrompt – multi-character switching', () => {
     );
     const prompt = buildSystemPrompt(settings, 'roleplay');
     expect(prompt).toContain('Every message in the conversation from the "user" role is from Alex');
-    expect(prompt).toContain('Alex is not Mira, not Kael');
+    // User persona section uses their name
+    expect(prompt).toContain('NAME: Alex');
   });
 
   it('uses "the user" as fallback when userPersona.name is empty', () => {
@@ -347,7 +348,7 @@ describe('buildSystemPrompt – multi-character switching', () => {
     );
     const prompt = buildSystemPrompt(settings, 'roleplay');
     expect(prompt).toContain('Every message in the conversation from the "user" role is from the user');
-    expect(prompt).toContain('the user is not Mira, not Kael');
+    expect(prompt).toContain('NAME: User');
   });
 
   it('never identifies the user as the active character', () => {
@@ -356,9 +357,9 @@ describe('buildSystemPrompt – multi-character switching', () => {
       { name: 'Alex' }
     );
     const prompt = buildSystemPrompt(settings, 'roleplay');
-    // "WHO YOU ARE" section should not say the user is Mira
-    expect(prompt).not.toMatch(/Alex.*is.*Mira[^,]/);
-    expect(prompt).toContain('Alex is not Mira');
+    // Identity section should say "You are Mira", not "You are Alex"
+    expect(prompt).toContain('You are Mira');
+    expect(prompt).not.toContain('You are Alex');
   });
 
   it('tells the model that user messages are directed at the active character', () => {
@@ -367,7 +368,7 @@ describe('buildSystemPrompt – multi-character switching', () => {
       { name: 'Alex' }
     );
     const prompt = buildSystemPrompt(settings, 'roleplay');
-    expect(prompt).toContain('Respond directly to Alex');
+    expect(prompt).toContain('respond directly to Alex');
   });
 
   // ── User persona section uses userPersona, not character data ──
@@ -407,12 +408,10 @@ describe('buildSystemPrompt – multi-character switching', () => {
     // Before: Mira is active
     expect(promptBefore).toContain('You are Mira.');
     expect(promptBefore).toContain('Every message in the conversation from the "user" role is from Alex');
-    expect(promptBefore).toContain('Alex is not Mira, not Kael');
 
     // After: Kael is active
     expect(promptAfter).toContain('You are Kael.');
     expect(promptAfter).toContain('Every message in the conversation from the "user" role is from Alex');
-    expect(promptAfter).toContain('Alex is not Kael, not Mira');
 
     // User persona section unchanged in both
     expect(promptBefore).toContain('NAME: Alex');
@@ -481,8 +480,7 @@ describe('user name population through full pipeline', () => {
     };
     const prompt = buildPromptFromRawSettings(settings);
     expect(prompt).toContain('Every message in the conversation from the "user" role is from Sam');
-    expect(prompt).toContain('Sam is not Elara');
-    expect(prompt).toContain('NAME: Sam (this is the real person');
+    expect(prompt).toContain('NAME: Sam');
   });
 
   it('populates user name in single-character mode with no character (fallback)', () => {
@@ -498,7 +496,7 @@ describe('user name population through full pipeline', () => {
     };
     const prompt = buildPromptFromRawSettings(settings);
     expect(prompt).toContain('Every message in the conversation from the "user" role is from Sam');
-    expect(prompt).toContain('NAME: Sam (this is the real person');
+    expect(prompt).toContain('NAME: Sam');
     // Fallback character is "Assistant"
     expect(prompt).toContain('You are Assistant');
   });
@@ -520,9 +518,8 @@ describe('user name population through full pipeline', () => {
     const prompt = buildPromptFromRawSettings(settings);
     expect(prompt).toContain('You are Mira');
     expect(prompt).toContain('Every message in the conversation from the "user" role is from Jordan');
-    expect(prompt).toContain('Jordan is not Mira, not Kael, not Zara');
-    expect(prompt).toContain('Respond directly to Jordan');
-    expect(prompt).toContain('NAME: Jordan (this is the real person');
+    expect(prompt).toContain('respond directly to Jordan');
+    expect(prompt).toContain('NAME: Jordan');
   });
 
   // ── Multi-character mode: switch to index 1 ──
@@ -545,9 +542,8 @@ describe('user name population through full pipeline', () => {
     expect(prompt).toContain('NAME: Kael');
     // User is still Jordan, not confused with any character
     expect(prompt).toContain('Every message in the conversation from the "user" role is from Jordan');
-    expect(prompt).toContain('Jordan is not Kael, not Mira, not Zara');
-    expect(prompt).toContain('Respond directly to Jordan');
-    expect(prompt).toContain('NAME: Jordan (this is the real person');
+    expect(prompt).toContain('respond directly to Jordan');
+    expect(prompt).toContain('NAME: Jordan');
   });
 
   // ── Multi-character mode: switch to last character ──
@@ -567,8 +563,7 @@ describe('user name population through full pipeline', () => {
     const prompt = buildPromptFromRawSettings(settings);
     expect(prompt).toContain('You are Zara');
     expect(prompt).toContain('Every message in the conversation from the "user" role is from Jordan');
-    expect(prompt).toContain('Jordan is not Zara, not Mira, not Kael');
-    expect(prompt).toContain('NAME: Jordan (this is the real person');
+    expect(prompt).toContain('NAME: Jordan');
   });
 
   // ── User name never appears in character sections ──
@@ -593,9 +588,8 @@ describe('user name population through full pipeline', () => {
     expect(cardMatch[1]).toBe('Mira');
 
     // THE PERSON YOU ARE TALKING TO section should have the user name
-    const personMatch = prompt.match(/THE PERSON YOU ARE TALKING TO:\nNAME: (.+?) \(/);
-    expect(personMatch).not.toBeNull();
-    expect(personMatch[1]).toBe('Jordan');
+    expect(prompt).toContain('THE PERSON YOU ARE TALKING TO');
+    expect(prompt).toContain('NAME: Jordan');
   });
 
   // ── User persona fields survive the transform ──
@@ -648,11 +642,7 @@ describe('user name population through full pipeline', () => {
       const prompt = buildPromptFromRawSettings(settings);
       expect(prompt).toContain(`You are ${chars[i].name}`);
       expect(prompt).toContain('Every message in the conversation from the "user" role is from Jordan');
-      expect(prompt).toContain('NAME: Jordan (this is the real person');
-      // User is listed as "not" every character
-      for (const c of chars) {
-        expect(prompt).toContain(`not ${c.name}`);
-      }
+      expect(prompt).toContain('NAME: Jordan');
     }
   });
 
@@ -672,8 +662,7 @@ describe('user name population through full pipeline', () => {
     };
     const prompt = buildPromptFromRawSettings(settings);
     expect(prompt).toContain('Every message in the conversation from the "user" role is from the user');
-    expect(prompt).toContain('the user is not Mira, not Kael');
-    expect(prompt).toContain('NAME: User (this is the real person');
+    expect(prompt).toContain('NAME: User');
   });
 
   // ── loadCharactersForPrompt does not mutate original settings ──
@@ -750,8 +739,8 @@ describe('prompt distinguishes user messages from supporting cast', () => {
     const prompt = buildSystemPrompt(settings, 'roleplay');
     // Positive frame: every user-role message is from Eva
     expect(prompt).toMatch(/every message.*from.*Eva/i);
-    // Eva is separate from all characters
-    expect(prompt).toContain('Eva is a distinct, real-world individual');
+    // Eva appears in user persona section
+    expect(prompt).toContain('NAME: Eva');
   });
 
   it('instructs model to respond directly to the user', () => {
@@ -770,7 +759,7 @@ describe('prompt distinguishes user messages from supporting cast', () => {
     );
     const prompt = buildSystemPrompt(settings, 'roleplay');
     expect(prompt).toMatch(/every message.*from.*the user/i);
-    expect(prompt).toContain('the user is a distinct, real-world individual');
+    expect(prompt).toContain('NAME: User');
   });
 
   it('constrains narration focus to the active character, not the user (positive frame)', () => {
@@ -779,10 +768,12 @@ describe('prompt distinguishes user messages from supporting cast', () => {
       { name: 'Eva' }
     );
     const prompt = buildSystemPrompt(settings, 'roleplay');
-    // Action Focus line: 100% on Nova's thoughts/words/movements
-    expect(prompt).toContain("Focus 100% of your narration and dialogue on Nova");
-    // User determines their own actions
-    expect(prompt).toContain('Only Eva determines');
+    // Nova is the primary voice in the prompt
+    expect(prompt).toContain('You are Nova');
+    expect(prompt).toContain('Nova is the primary voice');
+    // User agency is enforced
+    expect(prompt).toContain('USER AGENCY');
+    expect(prompt).toContain("Eva's actions, decisions, movements, and dialogue belong entirely to Eva");
   });
 
   it('constrains narration focus even when user name is empty', () => {
@@ -791,8 +782,8 @@ describe('prompt distinguishes user messages from supporting cast', () => {
       { name: '' }
     );
     const prompt = buildSystemPrompt(settings, 'roleplay');
-    expect(prompt).toContain("Focus 100% of your narration and dialogue on Nova");
-    expect(prompt).toContain('Only the user determines');
+    expect(prompt).toContain('You are Nova');
+    expect(prompt).toContain('USER AGENCY');
   });
 
   it('uses pure output framing instead of negative constraints', () => {
@@ -803,8 +794,5 @@ describe('prompt distinguishes user messages from supporting cast', () => {
     const prompt = buildSystemPrompt(settings, 'roleplay');
     // Pure Output line: everything exists within the story's world
     expect(prompt).toContain("Every word generated must exist within the story's world");
-    // No negative "NEVER" instructions in the prompt (except the user-agency line which is still needed)
-    const neverCount = (prompt.match(/\bNEVER\b/g) || []).length;
-    expect(neverCount).toBe(0);
   });
 });

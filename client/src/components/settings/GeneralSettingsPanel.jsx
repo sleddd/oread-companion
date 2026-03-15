@@ -113,6 +113,21 @@ export default function GeneralSettingsPanel({ settings, onChange, models = [] }
             placeholder="2048"
           />
         </div>
+
+        <div className="general-settings-panel__field">
+          <label className="general-settings-panel__label">Context Budget</label>
+          <p className="general-settings-panel__hint">
+            How many tokens of conversation history to include in each request. Higher values give the AI
+            more context from past messages but use more of the model's context window. Pinned messages
+            and story notes are prioritized within this budget.
+          </p>
+          <TextField
+            type="number"
+            value={(general.contextBudget || 4096).toString()}
+            onChange={(value) => handleFieldChange('contextBudget', Math.max(512, Math.min(131072, parseInt(value) || 4096)))}
+            placeholder="4096"
+          />
+        </div>
       </div>
 
       <div className="general-settings-panel__section">

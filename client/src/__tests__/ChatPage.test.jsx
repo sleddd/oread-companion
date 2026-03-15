@@ -20,6 +20,9 @@ const storeState = {
   currentSessionId: null,
   createSession: vi.fn(),
   loadMessageHistory: vi.fn(),
+  storyNotes: '',
+  loadStoryNotes: vi.fn(),
+  saveStoryNotes: vi.fn(),
 };
 
 vi.mock('../store/useStore', () => ({
@@ -35,6 +38,7 @@ describe('ChatPage session-change effect', () => {
     storeState.currentSessionId = null;
     storeState.loadMessageHistory = vi.fn();
     storeState.createSession = vi.fn();
+    storeState.loadStoryNotes = vi.fn();
     // Reset useStore mock to use current storeState
     useStore.mockImplementation((selector) => selector(storeState));
   });

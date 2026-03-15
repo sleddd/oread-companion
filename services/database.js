@@ -99,6 +99,25 @@ class DatabaseService {
       ON sessions(updated_at DESC);
     `);
 
+    // Migrations: add columns for zero-inference memory system
+    // ALTER TABLE ignores "duplicate column" errors — safe to re-run
+    try {
+      await this.db.exec(`ALTER TABLE messages ADD COLUMN pinned INTEGER DEFAULT 0`);
+    } catch (e) { /* column already exists */ }
+
+    try {
+      await this.db.exec(`ALTER TABLE sessions ADD COLUMN story_notes TEXT DEFAULT ''`);
+    } catch (e) { /* column already exists */ }
+
+    try {
+      await this.db.exec(`ALTER TABLE sessions ADD COLUMN extracted_facts TEXT DEFAULT '[]'`);
+    } catch (e) { /* column already exists */ }
+
+    await this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_messages_pinned
+      ON messages(session_id, pinned);
+    `);
+
   }
 
   // Helper methods

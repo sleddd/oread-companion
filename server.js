@@ -289,11 +289,19 @@ app.post('/api/chat', validate(chatSchema), asyncHandler(async (req, res) => {
         let webSearchBlock = '';
         if (settings?.general?.webSearch && settings?.general?.braveApiKey) {
           try {
+            if (CONFIG.isDevelopment) {
+              console.log(`🔍 Web search: "${userContent.substring(0, 80)}"`);
+            }
             const results = await searchWeb(userContent, settings.general.braveApiKey, { count: 3 });
             webSearchBlock = formatSearchResults(results);
+            if (CONFIG.isDevelopment) {
+              console.log(`🔍 Web search: ${results.length} results${webSearchBlock ? '' : ' (empty)'}`);
+            }
           } catch (err) {
             console.warn('Web search error:', err.message);
           }
+        } else if (CONFIG.isDevelopment && settings?.general?.webSearch) {
+          console.log('🔍 Web search enabled but no API key configured');
         }
 
         const { messages: windowedMessages, contextBlock } = selectMessages({

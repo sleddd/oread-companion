@@ -1,9 +1,11 @@
 /**
- * Web search via Brave Search API.
+ * Web search via Brave LLM Context API.
+ * Uses the /v1/llm/context endpoint — returns pre-extracted, LLM-optimized content
+ * instead of raw search snippets. Much better for grounding AI responses.
  * Optional — only runs when webSearch is enabled and API key is configured.
  */
 
-const BRAVE_SEARCH_URL = 'https://api.search.brave.com/res/v1/web/search';
+const BRAVE_LLM_CONTEXT_URL = 'https://api.search.brave.com/res/v1/llm/context';
 
 // Messages too short or too casual to warrant a web search
 const MIN_SEARCH_LENGTH = 15;
@@ -16,33 +18,37 @@ const CASUAL_PATTERNS = /^(hey|hi|hello|thanks|ok|sure|yes|no|good|great|fine|co
 export function shouldSearch(text) {
   if (!text || text.trim().length < MIN_SEARCH_LENGTH) return false;
   if (CASUAL_PATTERNS.test(text.trim())) return false;
-  // Questions and factual queries are good candidates
   if (text.includes('?')) return true;
-  // Explicit search intent
   if (/\b(who|what|when|where|why|how|latest|current|recent|news|update|search|find|look up)\b/i.test(text)) return true;
-  // Default: search if long enough
   return text.trim().length >= 30;
 }
 
 /**
- * Search the web using Brave Search API.
+ * Search the web using Brave LLM Context API.
+ * Returns pre-extracted content optimized for LLM grounding.
  *
  * @param {string} query - Search query
  * @param {string} apiKey - Brave Search API key
  * @param {Object} options
- * @param {number} options.count - Number of results (default 3)
- * @returns {Promise<Array<{ title: string, url: string, snippet: string }>>}
+ * @param {number} options.maxTokens - Max tokens in context (default 4096)
+ * @param {number} options.maxUrls - Max URLs to include (default 3)
+ * @param {string} options.freshness - Freshness filter: pd (24h), pw (7d), pm (31d), py (365d)
+ * @returns {Promise<{ context: string, sources: Array<{ url: string, title: string }> }>}
  */
-export async function searchWeb(query, apiKey, { count = 3 } = {}) {
-  if (!query || !apiKey) return [];
+export async function searchWeb(query, apiKey, { maxTokens = 4096, maxUrls = 3, freshness } = {}) {
+  if (!query || !apiKey) return { context: '', sources: [] };
 
-  // Clean the query — conversational text makes bad search queries
   query = cleanSearchQuery(query);
 
   try {
-    const url = new URL(BRAVE_SEARCH_URL);
+    const url = new URL(BRAVE_LLM_CONTEXT_URL);
     url.searchParams.set('q', query);
-    url.searchParams.set('count', count.toString());
+    url.searchParams.set('maximum_number_of_tokens', maxTokens.toString());
+    url.searchParams.set('maximum_number_of_urls', maxUrls.toString());
+    url.searchParams.set('context_threshold_mode', 'balanced');
+    if (freshness) {
+      url.searchParams.set('freshness', freshness);
+    }
 
     const response = await fetch(url.toString(), {
       headers: {
@@ -53,38 +59,52 @@ export async function searchWeb(query, apiKey, { count = 3 } = {}) {
     });
 
     if (!response.ok) {
-      console.warn(`Brave Search API error: ${response.status} ${response.statusText}`);
-      return [];
+      console.warn(`Brave LLM Context API error: ${response.status} ${response.statusText}`);
+      return { context: '', sources: [] };
     }
 
     const data = await response.json();
-    const results = (data.web?.results || []).slice(0, count);
 
-    return results.map(r => ({
-      title: r.title || '',
-      url: r.url || '',
-      snippet: r.description || '',
-    }));
+    // Extract grounding content
+    const snippets = data.grounding?.snippets || [];
+    const context = snippets.map(s => s.text || s.content || '').filter(Boolean).join('\n\n');
+
+    // Extract source metadata
+    const sources = [];
+    if (data.sources) {
+      for (const [sourceUrl, meta] of Object.entries(data.sources)) {
+        sources.push({
+          url: sourceUrl,
+          title: meta.title || sourceUrl,
+        });
+      }
+    }
+
+    return { context, sources };
   } catch (err) {
     console.warn('Web search failed:', err.message);
-    return [];
+    return { context: '', sources: [] };
   }
 }
 
 /**
- * Format search results as a context block for injection into the prompt.
+ * Format LLM context results as a context block for injection into the prompt.
  *
- * @param {Array<{ title: string, url: string, snippet: string }>} results
+ * @param {{ context: string, sources: Array<{ url: string, title: string }> }} results
  * @returns {string} Formatted context block
  */
 export function formatSearchResults(results) {
-  if (!results || results.length === 0) return '';
+  if (!results || !results.context) return '';
 
-  const lines = results.map((r, i) =>
-    `${i + 1}. ${r.title}\n   ${r.snippet}\n   Source: ${r.url}`
-  );
+  let block = `[Web Search Results — USE THESE AS YOUR PRIMARY SOURCE. Do not rely on training data when search results are available. Cite sources when relevant.]\n\n`;
+  block += results.context;
 
-  return `[Web Search Results — USE THESE AS YOUR PRIMARY SOURCE. Do not rely on training data when search results are available. Cite sources when relevant.]\n${lines.join('\n\n')}`;
+  if (results.sources?.length > 0) {
+    block += '\n\nSources:\n';
+    block += results.sources.map(s => `- ${s.title}: ${s.url}`).join('\n');
+  }
+
+  return block;
 }
 
 /**
@@ -113,8 +133,10 @@ function cleanSearchQuery(text) {
   // Collapse whitespace
   q = q.replace(/\s+/g, ' ').trim();
 
-  // If query got too short after cleaning, fall back to original
-  if (q.length < 5) return text.trim();
+  // Cap at 400 chars (API limit)
+  q = q.substring(0, 400);
+
+  if (q.length < 5) return text.trim().substring(0, 400);
 
   return q;
 }

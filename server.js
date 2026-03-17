@@ -292,10 +292,10 @@ app.post('/api/chat', validate(chatSchema), asyncHandler(async (req, res) => {
             if (CONFIG.isDevelopment) {
               console.log(`🔍 Web search: "${userContent.substring(0, 80)}"`);
             }
-            const results = await searchWeb(userContent, settings.general.braveApiKey, { count: 3 });
+            const results = await searchWeb(userContent, settings.general.braveApiKey);
             webSearchBlock = formatSearchResults(results);
             if (CONFIG.isDevelopment) {
-              console.log(`🔍 Web search: ${results.length} results${webSearchBlock ? '' : ' (empty)'}`);
+              console.log(`🔍 Web search: ${results.sources?.length || 0} sources, ${results.context?.length || 0} chars context`);
             }
           } catch (err) {
             console.warn('Web search error:', err.message);

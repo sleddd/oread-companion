@@ -106,7 +106,10 @@ The store is split into domain-specific slices composed into a single flat store
 ### World / Session State Manager
 Same pipes, different extraction strategies per mode. Both store in `sessions.world_state` JSON.
 
-**Roleplay mode** (`extractWorldState()`):
+**Roleplay mode** (`extractWorldState(settings)`):
+- Settings-aware: uses character names from `settings.roleplay.character` + `settings.roleplay.characters` + `settings.userPersona.name` for reliable character detection via string matching (NLP-detected people only added if they match a settings name)
+- Location: conservative place-noun whitelist (~60 nouns: library, study, basement, corridor, etc.) + "the/a + place" pattern. Prefers new locations over re-confirming current. NLP `doc.places()` filtered against blacklist
+- Events: separate user-action patterns (fell, screamed, tripped) vs narrative-action patterns (collapsed, cracked, shifted). `isDialogueLine()` filter rejects speech, opinions, personification, short emotes, and questions
 - Tracks location, time, present characters, events, mood + known characters registry, event lifecycle, location breadcrumbs
 
 **Utility mode** (`extractSessionState()`):
@@ -121,8 +124,8 @@ Same pipes, different extraction strategies per mode. Both store in `sessions.wo
 - **Event Lifecycle** — objects `{ text, firstDetected, lastConfirmed, state }`. States: `active` → `fading` → `resolved` (or `archived` for decisions). Used for events, questions, decisions, parked items
 - **Debate Tracking** — `services/debateExtractor.js` runs every 10 turns in both modes with mode-aware prompts. Stored in `world_state.debates`. Merged by topic keyword overlap, capped at 10
 - **World Snapshots** — `services/worldSnapshotService.js` creates snapshots on session archive (both modes), seeds new sessions (requires `crossSessionMemory` enabled)
-- `WorldStatePanel.jsx` — dual-mode collapsible panel (collapsed by default): "World State" (roleplay) or "Session State" (utility). Auto-reloads after each message via `loadWorldState()` in `chatSlice.js` `sendMessage()` finally block
-- API: `GET/PUT /api/sessions/:id/world-state`
+- `WorldStatePanel.jsx` — dual-mode collapsible panel (collapsed by default): "World State" (roleplay) or "Session State" (utility). Re-extract button (↻) replays all messages through current extractor. History log shows state changes in reverse chronological order. Auto-reloads after each message via `loadWorldState()` in `chatSlice.js` `sendMessage()` finally block
+- API: `GET/PUT /api/sessions/:id/world-state`, `POST /api/sessions/:id/reextract-state`
 
 ### Story Notes vs Auto-Extracted State
 Story notes and world/session state serve complementary roles:
@@ -158,8 +161,9 @@ Story notes and world/session state serve complementary roles:
 - `PATCH /api/sessions/:sessionId/messages/:messageId/pin` — toggle pin
 - `GET /api/sessions/:id/notes` — read story notes
 - `PUT /api/sessions/:id/notes` — save story notes
-- `GET /api/sessions/:id/world-state` — get world state
+- `GET /api/sessions/:id/world-state` — get world state + history
 - `PUT /api/sessions/:id/world-state` — update world state
+- `POST /api/sessions/:id/reextract-state` — replay all messages through extractor, rebuild state + history from scratch
 - `GET /api/sessions/:id/search?q=<query>` — FTS5 message search
 
 **Memory:**
@@ -236,3 +240,6 @@ Users can save current settings as a named "world" template. Stored as JSON in `
 
 ## In-Progress Branches
 - **`cloud-api-integration`** — Adds OpenAI + Anthropic cloud model support alongside Ollama. Provider auto-detected from model name. API keys encrypted (AES-256-GCM) in SQLite `api_keys` table. UI in Settings > Integrations.
+
+## Merged Branches
+- **`architecture-overhaul`** — Tiered memory system, world/session state, dialectic, FTS5 search, cross-session memory. Squash-merged to main.

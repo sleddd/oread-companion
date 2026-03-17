@@ -35,7 +35,7 @@ export function shouldSearch(text) {
  * @param {string} options.freshness - Freshness filter: pd (24h), pw (7d), pm (31d), py (365d)
  * @returns {Promise<{ context: string, sources: Array<{ url: string, title: string }> }>}
  */
-export async function searchWeb(query, apiKey, { maxTokens = 4096, maxUrls = 3, freshness } = {}) {
+export async function searchWeb(query, apiKey, { maxTokens = 2048, maxUrls = 3, freshness } = {}) {
   if (!query || !apiKey) return { context: '', sources: [] };
 
   query = cleanSearchQuery(query);
@@ -104,8 +104,13 @@ export async function searchWeb(query, apiKey, { maxTokens = 4096, maxUrls = 3, 
 export function formatSearchResults(results) {
   if (!results || !results.context) return '';
 
+  // Cap context to ~2000 tokens (~8000 chars) to leave room in the context window
+  const cappedContext = results.context.length > 8000
+    ? results.context.substring(0, 8000) + '\n\n[...truncated for context budget]'
+    : results.context;
+
   let block = `[Web Search Results — USE THESE AS YOUR PRIMARY SOURCE. Do not rely on training data when search results are available. Cite sources when relevant.]\n\n`;
-  block += results.context;
+  block += cappedContext;
 
   if (results.sources?.length > 0) {
     block += '\n\nSources:\n';

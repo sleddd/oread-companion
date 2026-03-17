@@ -1,24 +1,51 @@
 /**
- * Lightweight sentiment analysis using a small transformer model.
+ * Emotion analysis using GoEmotions dataset (28 fine-grained emotions).
  * Runs locally via @huggingface/transformers (ONNX runtime).
- * Model: cardiffnlp/twitter-roberta-base-sentiment-latest (~125MB, cached after first download)
+ * Model: SamLowe/roberta-base-go_emotions-onnx (~125MB, cached after first download)
  *
- * Returns: { label: 'positive'|'neutral'|'negative', score: 0.0-1.0 }
+ * Returns: { label: 'joy'|'anger'|..., score: 0.0-1.0 }
+ * Full label set (27 emotions + neutral):
+ *   admiration, amusement, anger, annoyance, approval, caring, confusion,
+ *   curiosity, desire, disappointment, disapproval, disgust, embarrassment,
+ *   excitement, fear, gratitude, grief, joy, love, nervousness, optimism,
+ *   pride, realization, relief, remorse, sadness, surprise, neutral
  */
 
 let pipeline = null;
-let sentimentPipeline = null;
+let emotionPipeline = null;
 let loadingPromise = null;
 let loadFailed = false;
 
-const MODEL_NAME = 'Xenova/twitter-roberta-base-sentiment-latest';
+const MODEL_NAME = 'SamLowe/roberta-base-go_emotions-onnx';
+
+// Valence groupings for trend detection
+const POSITIVE_EMOTIONS = new Set([
+  'admiration', 'amusement', 'approval', 'caring', 'curiosity', 'desire',
+  'excitement', 'gratitude', 'joy', 'love', 'optimism', 'pride', 'relief', 'surprise'
+]);
+const NEGATIVE_EMOTIONS = new Set([
+  'anger', 'annoyance', 'disappointment', 'disapproval', 'disgust',
+  'embarrassment', 'fear', 'grief', 'nervousness', 'remorse', 'sadness'
+]);
+// Remaining: confusion, realization, neutral → treated as neutral valence
 
 /**
- * Initialize the sentiment pipeline. Called once on first use.
+ * Get the valence category of an emotion label.
+ * @param {string} label - GoEmotions label
+ * @returns {'positive'|'negative'|'neutral'}
+ */
+export function getValence(label) {
+  if (POSITIVE_EMOTIONS.has(label)) return 'positive';
+  if (NEGATIVE_EMOTIONS.has(label)) return 'negative';
+  return 'neutral';
+}
+
+/**
+ * Initialize the emotion classification pipeline. Called once on first use.
  * Model is downloaded automatically and cached in ~/.cache/huggingface.
  */
 async function loadPipeline() {
-  if (sentimentPipeline) return sentimentPipeline;
+  if (emotionPipeline) return emotionPipeline;
   if (loadFailed) return null;
   if (loadingPromise) return loadingPromise;
 
@@ -26,14 +53,13 @@ async function loadPipeline() {
     try {
       const { pipeline: createPipeline } = await import('@huggingface/transformers');
       pipeline = createPipeline;
-      sentimentPipeline = await pipeline('sentiment-analysis', MODEL_NAME, {
-        // Use quantized model for faster inference
+      emotionPipeline = await pipeline('text-classification', MODEL_NAME, {
         quantized: true,
       });
-      console.log('✅ Sentiment model loaded');
-      return sentimentPipeline;
+      console.log('✅ Emotion model loaded (GoEmotions)');
+      return emotionPipeline;
     } catch (err) {
-      console.warn('⚠️ Sentiment model failed to load (non-critical):', err.message);
+      console.warn('⚠️ Emotion model failed to load (non-critical):', err.message);
       loadFailed = true;
       return null;
     }
@@ -43,10 +69,10 @@ async function loadPipeline() {
 }
 
 /**
- * Analyze sentiment of a text string.
+ * Analyze emotion of a text string.
  *
  * @param {string} text - The text to analyze
- * @returns {Promise<{ label: string, score: number }|null>} Sentiment result or null if unavailable
+ * @returns {Promise<{ label: string, score: number }|null>} Emotion result or null if unavailable
  */
 export async function analyzeSentiment(text) {
   if (!text || text.trim().length < 3) return null;
@@ -57,27 +83,17 @@ export async function analyzeSentiment(text) {
   try {
     // Truncate long text — model max is 512 tokens, ~200 words is safe
     const truncated = text.length > 800 ? text.substring(0, 800) : text;
-    const results = await pipe(truncated);
+    const results = await pipe(truncated, { top_k: 1 });
 
     if (results && results.length > 0) {
       const result = results[0];
-      // Normalize label names
-      const labelMap = {
-        'positive': 'positive',
-        'negative': 'negative',
-        'neutral': 'neutral',
-        // Some models use LABEL_0, LABEL_1, LABEL_2
-        'LABEL_0': 'negative',
-        'LABEL_1': 'neutral',
-        'LABEL_2': 'positive',
-      };
       return {
-        label: labelMap[result.label] || result.label,
+        label: result.label,
         score: Math.round(result.score * 100) / 100,
       };
     }
   } catch (err) {
-    console.warn('Sentiment analysis error:', err.message);
+    console.warn('Emotion analysis error:', err.message);
   }
 
   return null;
@@ -86,9 +102,9 @@ export async function analyzeSentiment(text) {
 /**
  * Convert a sentiment trail into a human-readable trajectory description.
  *
- * @param {Array<{ label: string, score: number, turn: number }>} trail - Recent sentiment entries
+ * @param {Array<{ label: string, score: number, turn: number }>} trail - Recent emotion entries
  * @param {number} currentTurn - Current turn number
- * @returns {string} Description like "positive (stable)" or "negative (sharp drop from positive 2 turns ago)"
+ * @returns {string} Description like "joy (stable)" or "sadness (shifted from joy 2 turns ago)"
  */
 export function describeSentimentTrajectory(trail, currentTurn) {
   if (!trail || trail.length === 0) return '';
@@ -107,10 +123,13 @@ export function describeSentimentTrajectory(trail, currentTurn) {
     return `${label} (shifted from ${previous.label} ${turnsAgo} turn${turnsAgo !== 1 ? 's' : ''} ago)`;
   }
 
-  // Check for trending
+  // Check for valence trending across last 3 entries
   if (trail.length >= 3) {
-    const scores = trail.slice(-3).map(t => t.label === 'positive' ? 1 : t.label === 'negative' ? -1 : 0);
-    const trend = scores[2] - scores[0];
+    const valences = trail.slice(-3).map(t => {
+      const v = getValence(t.label);
+      return v === 'positive' ? 1 : v === 'negative' ? -1 : 0;
+    });
+    const trend = valences[2] - valences[0];
     if (trend > 0) return `${label} (trending more positive)`;
     if (trend < 0) return `${label} (trending more negative)`;
   }
@@ -122,11 +141,11 @@ export function describeSentimentTrajectory(trail, currentTurn) {
  * Pre-download the model. Called during install/setup.
  */
 export async function preloadModel() {
-  console.log('📥 Pre-loading sentiment model...');
+  console.log('📥 Pre-loading emotion model (GoEmotions)...');
   const pipe = await loadPipeline();
   if (pipe) {
     // Run a warm-up inference
     await analyzeSentiment('Hello, this is a test.');
-    console.log('✅ Sentiment model ready');
+    console.log('✅ Emotion model ready');
   }
 }

@@ -8,7 +8,7 @@ Full-stack local AI chat app with Ollama integration. Streaming chat, roleplay/c
 
 - **Backend**: Node.js (ES Modules), Express, SQLite (WAL mode, FTS5), SSE streaming
 - **Frontend**: React 19, Vite, Zustand (sliced stores), SCSS (`global.scss` + `*.module.scss`)
-- **AI**: Ollama (`ollama` npm package), `compromise` (rule-based NLP for fact/world/stance extraction), `@huggingface/transformers` (RoBERTa sentiment model, ~125MB cached)
+- **AI**: Ollama (`ollama` npm package), `compromise` (rule-based NLP for fact/world/stance extraction), `@huggingface/transformers` (GoEmotions model for fine-grained emotion classification, ~125MB cached)
 - **Security**: Helmet, express-rate-limit, Joi validation, CSRF tokens, express-session
 
 ## Running
@@ -62,7 +62,7 @@ The store is split into domain-specific slices composed into a single flat store
 **Zero-inference tier** (rule-based NLP + lightweight ML, every turn):
 - Fact extraction via `compromise` — people, places, events, facts
 - Smart deduplication with turn-age awareness (`deduplicateAndCap`, 80 facts, 40-turn age)
-- Sentiment analysis via RoBERTa (`services/sentimentAnalyzer.js`) — runs on user message each turn (~20ms). Tracks `currentSentiment` + `sentimentTrail` (last 10) in world state. Context injection: `[User Sentiment] positive (shifted from negative 2 turns ago)`. Model downloaded on `npm install` via `scripts/download-models.js`, cached in `~/.cache/huggingface`. Non-critical — app works without it.
+- Emotion classification via GoEmotions (`services/sentimentAnalyzer.js`) — 28 fine-grained emotions (admiration, anger, joy, sadness, etc.) via `SamLowe/roberta-base-go_emotions-onnx`. Runs on user message each turn (~20ms). Tracks `currentSentiment` + `sentimentTrail` (last 10) in world state. Context injection: `[User Sentiment] joy (shifted from sadness 2 turns ago)`. Model downloaded on `npm install` via `scripts/download-models.js`, cached in `~/.cache/huggingface`. Non-critical — app works without it.
 - World state extraction — location, time, present characters, events, mood, known characters registry, event lifecycle, location breadcrumbs (roleplay mode)
 - Session state extraction — focus topic, open questions, decisions, parked items, known entities (utility/normal mode)
 - Character stance extraction — opinion markers, dialectic style inference (roleplay only)

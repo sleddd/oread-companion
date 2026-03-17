@@ -14,7 +14,6 @@ import { selectMessages } from './services/contextWindow.js';
 import { processPostChat } from './services/postChatProcessor.js';
 import { searchMessages, detectRecallTriggers } from './services/memorySearch.js';
 import { getRelevantGlobalMemories } from './services/globalMemory.js';
-import { searchWeb, formatSearchResults, shouldSearch } from './services/webSearch.js';
 
 // Routes
 import sessionsRouter from './routes/sessions.js';
@@ -285,25 +284,6 @@ app.post('/api/chat', validate(chatSchema), asyncHandler(async (req, res) => {
           }
         }
 
-        // Web search if enabled
-        let webSearchBlock = '';
-        if (settings?.general?.webSearch && settings?.general?.braveApiKey && shouldSearch(userContent)) {
-          try {
-            const results = await searchWeb(userContent, settings.general.braveApiKey);
-            webSearchBlock = formatSearchResults(results);
-            if (CONFIG.isDevelopment) {
-              console.log(`🔍 Web search: ${results.sources?.length || 0} sources, ${results.context?.length || 0} chars context`);
-              if (webSearchBlock) {
-                console.log(`🔍 Search block (first 300 chars): ${webSearchBlock.substring(0, 300)}`);
-              }
-            }
-          } catch (err) {
-            console.warn('Web search error:', err.message);
-          }
-        } else if (CONFIG.isDevelopment && settings?.general?.webSearch && shouldSearch(userContent)) {
-          console.log('🔍 Web search enabled but no API key configured');
-        }
-
         const { messages: windowedMessages, contextBlock } = selectMessages({
           messages: dbMessages.map(m => ({ role: m.role, content: m.content, pinned: !!m.pinned })),
           systemPrompt: systemPrompt || '',
@@ -320,10 +300,9 @@ app.post('/api/chat', validate(chatSchema), asyncHandler(async (req, res) => {
 
         messagesToSend = windowedMessages;
 
-        // Append context block + web search to system prompt
-        const fullContext = [contextBlock, webSearchBlock].filter(Boolean).join('\n\n');
-        if (fullContext) {
-          finalSystemPrompt = (systemPrompt || '') + '\n\n' + fullContext;
+        // Append context block to system prompt
+        if (contextBlock) {
+          finalSystemPrompt = (systemPrompt || '') + '\n\n' + contextBlock;
           options.systemPrompt = finalSystemPrompt;
         }
 

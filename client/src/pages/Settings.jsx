@@ -468,51 +468,9 @@ export default function Settings() {
         {activeTab === 'integrations' && (
           <div className="settings__tab-content">
             <CollapsibleSection
-              title="Web Search"
-              description="Enable web search to ground responses in current information"
-              defaultExpanded={true}
-            >
-              <div className="settings__integration-actions">
-                <div className="settings__integration-group">
-                  <label className="settings__checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={settings.general?.webSearch || false}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        general: { ...settings.general, webSearch: e.target.checked }
-                      })}
-                    />
-                    <span>Enable web search</span>
-                  </label>
-                  <p className="settings__integration-hint">
-                    When enabled, user messages are searched via Brave Search and results are injected into the AI's context. Requires a Brave Search API key.
-                  </p>
-                </div>
-                <div className="settings__integration-group">
-                  <h4 className="settings__integration-title">Brave Search API Key</h4>
-                  <p className="settings__integration-hint">
-                    Get a free API key at <a href="https://brave.com/search/api/" target="_blank" rel="noopener noreferrer" style={{ color: '#4db8a8' }}>brave.com/search/api</a>
-                  </p>
-                  <input
-                    type="password"
-                    className="settings__text-input"
-                    placeholder="BSA-xxxxxxxxxxxxxxxxxxxxxxxx"
-                    value={settings.general?.braveApiKey || ''}
-                    onChange={(e) => setSettings({
-                      ...settings,
-                      general: { ...settings.general, braveApiKey: e.target.value }
-                    })}
-                    style={{ width: '100%', maxWidth: '400px', padding: '8px 12px', background: '#252525', border: '1px solid #333', borderRadius: '4px', color: '#ccc', fontFamily: 'monospace', fontSize: '0.85rem' }}
-                  />
-                </div>
-              </div>
-            </CollapsibleSection>
-
-            <CollapsibleSection
               title="Import & Export"
               description="Backup, restore, and manage your settings"
-              defaultExpanded={false}
+              defaultExpanded={true}
             >
               <div className="settings__integration-actions">
                 <div className="settings__integration-group">

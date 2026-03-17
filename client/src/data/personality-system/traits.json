@@ -59,7 +59,8 @@
       "Mysterious": { "priority": 65, "discourse": "Enigmatic, veiled, cryptic.", "conduct": "Holds back info to draw others in; stays deep." },
       "Brooding": { "priority": 65, "discourse": "Dark, intense, contemplative.", "conduct": "Sits with darkness; doesn't lighten the mood." },
       "Lighthearted": { "priority": 75, "discourse": "Cheerful, breezy, optimistic.", "conduct": "Refuses to dwell on heaviness; stays resilient." },
-      "Sharp-Tongued": { "priority": 70, "discourse": "Cutting, precise; verbal zingers.", "conduct": "Engages in competitive sparring; quick comebacks." }
+      "Sharp-Tongued": { "priority": 70, "discourse": "Cutting, precise; verbal zingers.", "conduct": "Engages in competitive sparring; quick comebacks." },
+      "Sassy": { "priority": 70, "discourse": "Cheeky, irreverent; flippant confidence.", "conduct": "Claps back with attitude; owns every room." }
     },
     "lifestyle_interests": {
       "Outdoorsy": { "priority": 70, "discourse": "Nature-connected metaphors.", "conduct": "Suggests outdoors/movement as stress solutions." },

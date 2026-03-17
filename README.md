@@ -57,14 +57,14 @@ Everything is saved as a **world** you can switch between instantly. Jump from a
 # Clone the repo
 git clone <repo-url> && cd chat
 
-# Backend dependencies (also downloads the sentiment analysis model ~125MB, cached)
+# Backend dependencies (also downloads the emotion analysis model ~125MB, cached)
 npm install
 
 # Frontend dependencies
 cd client && npm install && cd ..
 ```
 
-> **Note:** First install downloads a ~125MB sentiment analysis model (RoBERTa). This is cached in `~/.cache/huggingface` and only happens once. The app works without it if the download fails — sentiment features will be disabled.
+> **Note:** First install downloads a ~125MB emotion analysis model (GoEmotions). This is cached in `~/.cache/huggingface` and only happens once. The app works without it if the download fails — emotion features will be disabled.
 
 ### Run
 

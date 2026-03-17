@@ -174,13 +174,25 @@ export const worldStateSchema = Joi.object({
       context: Joi.string().max(500).allow('').optional()
     })
   ).optional(),
-  // Sentiment tracking
+  // Emotion tracking (GoEmotions — 27 emotions + neutral)
   currentSentiment: Joi.object({
-    label: Joi.string().valid('positive', 'neutral', 'negative').required(),
+    label: Joi.string().valid(
+      'admiration', 'amusement', 'anger', 'annoyance', 'approval', 'caring',
+      'confusion', 'curiosity', 'desire', 'disappointment', 'disapproval',
+      'disgust', 'embarrassment', 'excitement', 'fear', 'gratitude', 'grief',
+      'joy', 'love', 'nervousness', 'optimism', 'pride', 'realization',
+      'relief', 'remorse', 'sadness', 'surprise', 'neutral'
+    ).required(),
     score: Joi.number().min(0).max(1).required()
   }).optional(),
   sentimentTrail: Joi.array().items(Joi.object({
-    label: Joi.string().valid('positive', 'neutral', 'negative').required(),
+    label: Joi.string().valid(
+      'admiration', 'amusement', 'anger', 'annoyance', 'approval', 'caring',
+      'confusion', 'curiosity', 'desire', 'disappointment', 'disapproval',
+      'disgust', 'embarrassment', 'excitement', 'fear', 'gratitude', 'grief',
+      'joy', 'love', 'nervousness', 'optimism', 'pride', 'realization',
+      'relief', 'remorse', 'sadness', 'surprise', 'neutral'
+    ).required(),
     score: Joi.number().min(0).max(1).required(),
     turn: Joi.number().integer().required()
   })).max(10).optional()
@@ -204,8 +216,6 @@ export const settingsSchema = Joi.object({
 
     general: Joi.object({
       selectedModel: Joi.string().max(100).allow(null).optional(),
-      webSearch: Joi.boolean().optional(),
-      braveApiKey: Joi.string().max(200).allow('', null).optional(),
       chatSearch: Joi.boolean().optional(),
       temperature: Joi.number().min(0).max(2).optional(),
       topP: Joi.number().min(0).max(1).optional(),

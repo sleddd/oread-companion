@@ -72,7 +72,6 @@ const BLANK_SETTINGS = {
   },
   general: {
     selectedModel: null,
-    webSearch: false,
     chatSearch: false,
     temperature: 0.7,
     topP: 0.9,
@@ -80,8 +79,7 @@ const BLANK_SETTINGS = {
     maxTokens: 2048,
     contextBudget: 4096,
     autoSummarize: true,
-    crossSessionMemory: true,
-    braveApiKey: ''
+    crossSessionMemory: true
   },
   meta: {
     templateId: null,

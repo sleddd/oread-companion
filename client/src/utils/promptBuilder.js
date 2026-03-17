@@ -43,11 +43,9 @@ function buildRoleplayPrompt(settings, isFirstMessage) {
   // === ASSEMBLE TEMPLATE ===
   let prompt = '';
 
-  // Inject current time if timezone is set
-  if (userPersona.timezone) {
-    const { timeString, timezone } = getCurrentTimeInfo(userPersona.timezone);
-    prompt += `CURRENT TIME: ${timeString} (${timezone})\n\n`;
-  }
+  // Always inject current date and time
+  const { timeString, timezone } = getCurrentTimeInfo(userPersona.timezone);
+  prompt += `CURRENT DATE & TIME: ${timeString} (${timezone})\n\n`;
 
   prompt += `WORLD SETTING:\n${world.settingLore || 'Modern day, everyday life.'}\n\n`;
 
@@ -218,10 +216,10 @@ function buildUtilityPrompt(settings) {
   if (userPersona.profession) parts.push(`PROFESSION: ${userPersona.profession}`);
   if (userPersona.bio) parts.push(`BIO: ${userPersona.bio}`);
   if (userPersona.skills) parts.push(`SKILLS: ${userPersona.skills}`);
-  if (userPersona.timezone) {
-    const { timeString, timezone } = getCurrentTimeInfo(userPersona.timezone);
-    parts.push(`TIMEZONE: ${timezone}`);
-    parts.push(`CURRENT TIME: ${timeString}`);
+  {
+    const { timeString, timezone: tz } = getCurrentTimeInfo(userPersona.timezone);
+    parts.push(`TIMEZONE: ${tz}`);
+    parts.push(`CURRENT DATE & TIME: ${timeString}`);
   }
   if (parts.length > 0) {
     sections.push(`USER INFORMATION:\n${parts.join('\n')}`);
@@ -250,17 +248,21 @@ function buildUtilityPrompt(settings) {
 function getCurrentTimeInfo(timezone) {
   try {
     const now = new Date();
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
+    const options = {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
-    });
-    return { timeString: formatter.format(now), timezone };
+      second: '2-digit',
+      hour12: true,
+      timeZoneName: 'short'
+    };
+    if (timezone) options.timeZone = timezone;
+    const formatter = new Intl.DateTimeFormat('en-US', options);
+    const resolvedTz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return { timeString: formatter.format(now), timezone: resolvedTz };
   } catch {
     return { timeString: new Date().toLocaleString(), timezone: 'Local' };
   }

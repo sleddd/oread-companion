@@ -35,7 +35,6 @@ Everything is saved as a **world** you can switch between instantly. Jump from a
 - **Worlds** — 22 built-in presets (roleplay + utility); save your own worlds and switch between them from the header
 - **Model management** — Browse, download, and switch Ollama models; HuggingFace GGUF support
 - **User persona** — Define yourself once and carry your identity across all worlds
-- **Sentiment tracking** — Lightweight transformer model (RoBERTa) analyzes user sentiment each turn. The AI sees emotional trajectory — shifts, trends, stability — and can respond with appropriate emotional calibration
 - **Dark theme** — Montserrat font, teal accent (#4db8a8), designed for long sessions
 
 ---
@@ -57,14 +56,12 @@ Everything is saved as a **world** you can switch between instantly. Jump from a
 # Clone the repo
 git clone <repo-url> && cd chat
 
-# Backend dependencies (also downloads the emotion analysis model ~125MB, cached)
+# Backend dependencies
 npm install
 
 # Frontend dependencies
 cd client && npm install && cd ..
 ```
-
-> **Note:** First install downloads a ~125MB emotion analysis model (GoEmotions). This is cached in `~/.cache/huggingface` and only happens once. The app works without it if the download fails — emotion features will be disabled.
 
 ### Run
 

@@ -173,29 +173,7 @@ export const worldStateSchema = Joi.object({
       lastSeen: Joi.number().integer().optional(),
       context: Joi.string().max(500).allow('').optional()
     })
-  ).optional(),
-  // Emotion tracking (GoEmotions — 27 emotions + neutral)
-  currentSentiment: Joi.object({
-    label: Joi.string().valid(
-      'admiration', 'amusement', 'anger', 'annoyance', 'approval', 'caring',
-      'confusion', 'curiosity', 'desire', 'disappointment', 'disapproval',
-      'disgust', 'embarrassment', 'excitement', 'fear', 'gratitude', 'grief',
-      'joy', 'love', 'nervousness', 'optimism', 'pride', 'realization',
-      'relief', 'remorse', 'sadness', 'surprise', 'neutral'
-    ).required(),
-    score: Joi.number().min(0).max(1).required()
-  }).optional(),
-  sentimentTrail: Joi.array().items(Joi.object({
-    label: Joi.string().valid(
-      'admiration', 'amusement', 'anger', 'annoyance', 'approval', 'caring',
-      'confusion', 'curiosity', 'desire', 'disappointment', 'disapproval',
-      'disgust', 'embarrassment', 'excitement', 'fear', 'gratitude', 'grief',
-      'joy', 'love', 'nervousness', 'optimism', 'pride', 'realization',
-      'relief', 'remorse', 'sadness', 'surprise', 'neutral'
-    ).required(),
-    score: Joi.number().min(0).max(1).required(),
-    turn: Joi.number().integer().required()
-  })).max(10).optional()
+  ).optional()
 });
 
 // Settings validation

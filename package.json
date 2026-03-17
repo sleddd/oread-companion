@@ -7,7 +7,6 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "postinstall": "node scripts/download-models.js",
     "security:audit": "npm audit",
     "security:audit:fix": "npm audit fix",
     "security:check": "npm outdated",
@@ -25,7 +24,6 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@huggingface/transformers": "^3.8.1",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "compromise": "^14.15.0",
     "cookie-parser": "^1.4.7",

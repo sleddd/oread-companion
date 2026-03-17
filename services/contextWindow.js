@@ -3,7 +3,6 @@
  * Pure function — no dependencies on Ollama or DB.
  */
 
-import { describeSentimentTrajectory } from './sentimentAnalyzer.js';
 
 /**
  * Estimate token count from text (rough: ~4 chars per token)
@@ -170,13 +169,6 @@ function buildContextBlock(storyNotes, extractedFacts, rollingSummary, worldStat
       }
     }
 
-    // Sentiment trajectory (both modes)
-    if (worldState.sentimentTrail?.length > 0) {
-      const trajectory = describeSentimentTrajectory(worldState.sentimentTrail, worldState.lastUpdated || 0);
-      if (trajectory) {
-        parts.push(`[User Sentiment]\n${trajectory}`);
-      }
-    }
   }
 
   if (characterStances && Object.keys(characterStances).length > 0) {

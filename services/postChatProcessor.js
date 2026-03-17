@@ -11,7 +11,6 @@ import { extractWorldState, extractSessionState, diffWorldState } from './worldS
 import { extractStances } from './stanceExtractor.js';
 import { shouldExtractDebates, extractDebates } from './debateExtractor.js';
 import { promoteToGlobalMemory, updateRelationship } from './globalMemory.js';
-import { analyzeSentiment } from './sentimentAnalyzer.js';
 
 /**
  * Run all post-chat processing for a session turn.
@@ -50,29 +49,6 @@ export async function processPostChat({ sessionId, userContent, assistantRespons
     }
   } catch (err) {
     console.error('Fact extraction error:', err);
-  }
-
-  // 1b. Sentiment analysis on user message (fast, ~20ms, non-blocking)
-  try {
-    const sentiment = await analyzeSentiment(userContent);
-    if (sentiment) {
-      const wsSession = await database.get(
-        `SELECT world_state FROM sessions WHERE id = ?`,
-        [sessionId]
-      );
-      const ws = JSON.parse(wsSession?.world_state || '{}');
-      const trail = ws.sentimentTrail || [];
-      trail.push({ label: sentiment.label, score: sentiment.score, turn });
-      // Keep last 10 entries
-      ws.sentimentTrail = trail.slice(-10);
-      ws.currentSentiment = sentiment;
-      await database.run(
-        `UPDATE sessions SET world_state = ? WHERE id = ?`,
-        [JSON.stringify(ws), sessionId]
-      );
-    }
-  } catch (err) {
-    // Sentiment is non-critical — never block the pipeline
   }
 
   // 2. Summarization (background, non-blocking, both modes)

@@ -2,21 +2,6 @@ import { useState, useCallback } from 'react';
 import useStore from '../../store/useStore';
 import styles from './WorldStatePanel.module.scss';
 
-const POSITIVE_EMOTIONS = new Set([
-  'admiration', 'amusement', 'approval', 'caring', 'curiosity', 'desire',
-  'excitement', 'gratitude', 'joy', 'love', 'optimism', 'pride', 'relief', 'surprise'
-]);
-const NEGATIVE_EMOTIONS = new Set([
-  'anger', 'annoyance', 'disappointment', 'disapproval', 'disgust',
-  'embarrassment', 'fear', 'grief', 'nervousness', 'remorse', 'sadness'
-]);
-
-function getEmotionValence(label) {
-  if (POSITIVE_EMOTIONS.has(label)) return 'positive';
-  if (NEGATIVE_EMOTIONS.has(label)) return 'negative';
-  return 'neutral';
-}
-
 export default function WorldStatePanel() {
   const worldState = useStore((s) => s.worldState);
   const worldStateHistory = useStore((s) => s.worldStateHistory);
@@ -419,22 +404,6 @@ export default function WorldStatePanel() {
               {renderLifecycleList('Parked', 'parkedItems', 'parked')}
               {renderKnownEntities()}
             </>
-          )}
-          {worldState.currentSentiment && (
-            <div className={styles.field}>
-              <span className={styles.label}>Emotion</span>
-              <span className={`${styles.sentimentValue} ${styles[`sentiment_${getEmotionValence(worldState.currentSentiment.label)}`]}`}>
-                {worldState.currentSentiment.label}
-                {worldState.sentimentTrail?.length > 1 && (() => {
-                  const trail = worldState.sentimentTrail;
-                  const prev = trail[trail.length - 2];
-                  if (prev.label !== worldState.currentSentiment.label) {
-                    return ` (was ${prev.label})`;
-                  }
-                  return ' (stable)';
-                })()}
-              </span>
-            </div>
           )}
           {renderDebates()}
           {worldStateHistory?.length > 0 && (

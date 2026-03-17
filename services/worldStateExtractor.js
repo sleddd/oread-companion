@@ -62,8 +62,21 @@ const FILLER_NOUNS = new Set([
   'thing', 'things', 'way', 'ways', 'stuff', 'something', 'anything',
   'everything', 'nothing', 'lot', 'bit', 'kind', 'type', 'sort',
   'point', 'part', 'time', 'question', 'answer', 'idea', 'problem',
-  'issue', 'case', 'example', 'option', 'approach', 'solution'
+  'issue', 'case', 'example', 'option', 'approach', 'solution',
+  'work', 'working', 'good', 'great', 'nice', 'happy', 'glad',
+  'hear', 'heard', 'sounds', 'sound', 'sure', 'need', 'know',
+  'think', 'want', 'like', 'just', 'right', 'okay', 'alright',
+  'alot', 'lot', 'much', 'many', 'start', 'keep', 'talk',
+  'chat', 'help', 'take', 'come', 'back', 'break', 'step',
+  'going', 'getting', 'making', 'taking', 'coming', 'looking',
+  'ready', 'ahead', 'behind', 'along', 'away', 'life',
+  'effort', 'progress', 'status', 'plan', 'focus', 'task',
+  'day', 'morning', 'evening', 'afternoon', 'night', 'monday',
+  'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'
 ]);
+
+// Words that should never be entities (contractions, pronouns, common words)
+const ENTITY_BLACKLIST = /^(?:i'm|i'll|i've|i'd|we're|we'll|we've|you're|you'll|you've|you'd|he's|she's|it's|they're|they'll|they've|that's|there's|here's|what's|who's|how's|don't|doesn't|didn't|won't|wouldn't|can't|couldn't|shouldn't|isn't|aren't|wasn't|weren't|haven't|hasn't|hadn't|let's|ranger|user|assistant)$/i;
 
 // Patterns for utility mode extraction
 const QUESTION_PATTERNS = [
@@ -581,7 +594,11 @@ export function extractSessionState(userMessage, assistantResponse, currentState
   const updates = { ...currentState, lastUpdated: turnNumber };
 
   // === Focus topic extraction (bigram/trigram weighted) ===
-  updates.currentFocus = extractFocusTopic(userMessage, assistantResponse, doc) || currentState.currentFocus;
+  // Only update focus if the new topic scores high enough — casual chat shouldn't constantly shift it
+  const newFocus = extractFocusTopic(userMessage, assistantResponse, doc);
+  if (newFocus) {
+    updates.currentFocus = newFocus;
+  }
 
   // === Open questions extraction ===
   const newQuestions = [];
@@ -691,23 +708,26 @@ export function extractSessionState(userMessage, assistantResponse, currentState
     ];
   }
 
-  // === Parked items extraction (explicit parking only) ===
-  const lowerCombined = combined.toLowerCase();
-  for (const pattern of PARKED_PATTERNS) {
-    if (pattern.test(lowerCombined)) {
-      const sentences = doc.sentences();
-      sentences.forEach(sentence => {
-        const text = sentence.text().trim();
-        if (pattern.test(text.toLowerCase()) && text.length > 5 && text.length < 300) {
-          const alreadyParked = matchEvent(text, existingParked, 0.3);
-          if (alreadyParked === -1) {
-            existingParked.push({ text, firstDetected: turnNumber, lastConfirmed: turnNumber, state: 'active' });
-          } else {
-            existingParked[alreadyParked].lastConfirmed = turnNumber;
+  // === Parked items extraction (explicit parking, user message only) ===
+  // Only the USER can park something — assistant saying "come back to" doesn't count
+  if (userMessage) {
+    const lowerUser = userMessage.toLowerCase();
+    for (const pattern of PARKED_PATTERNS) {
+      if (pattern.test(lowerUser)) {
+        const userDoc = nlp(userMessage);
+        userDoc.sentences().forEach(sentence => {
+          const text = sentence.text().trim();
+          if (pattern.test(text.toLowerCase()) && text.length > 5 && text.length < 300) {
+            const alreadyParked = matchEvent(text, existingParked, 0.3);
+            if (alreadyParked === -1) {
+              existingParked.push({ text, firstDetected: turnNumber, lastConfirmed: turnNumber, state: 'active' });
+            } else {
+              existingParked[alreadyParked].lastConfirmed = turnNumber;
+            }
           }
-        }
-      });
-      break;
+        });
+        break;
+      }
     }
   }
 
@@ -721,22 +741,34 @@ export function extractSessionState(userMessage, assistantResponse, currentState
   const userTerms = new Set();
   const assistantTerms = new Set();
 
-  // Collect candidates from each source
+  // Collect candidates from each source, with cleaning
+  const addCandidate = (name, termSet) => {
+    // Strip trailing/leading punctuation
+    const clean = name.replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, '').trim();
+    if (clean.length < 3) return;
+    // Reject contractions, pronouns, common words
+    if (ENTITY_BLACKLIST.test(clean)) return;
+    // Reject single lowercase words (not proper nouns)
+    if (clean === clean.toLowerCase() && !clean.includes('/') && !clean.includes('.')) return;
+    candidatesThisTurn.add(clean);
+    termSet.add(clean.toLowerCase());
+  };
+
   const collectCandidates = (text, termSet) => {
     if (!text) return;
     const d = nlp(text);
-    // Multi-word proper nouns
-    d.match('#ProperNoun+').out('array').forEach(n => { if (n.length > 1) { candidatesThisTurn.add(n); termSet.add(n.toLowerCase()); } });
+    // Multi-word proper nouns (2+ words preferred)
+    d.match('#ProperNoun+').out('array').forEach(n => addCandidate(n, termSet));
     // CamelCase
-    (text.match(/\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b/g) || []).forEach(t => { candidatesThisTurn.add(t); termSet.add(t.toLowerCase()); });
+    (text.match(/\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b/g) || []).forEach(t => addCandidate(t, termSet));
     // Backtick terms
     (text.match(/`([^`]+)`/g) || []).forEach(raw => {
       const t = raw.replace(/`/g, '');
-      if (t.length > 1 && t.length < 100) { candidatesThisTurn.add(t); termSet.add(t.toLowerCase()); }
+      if (t.length > 2 && t.length < 100) addCandidate(t, termSet);
     });
     // File paths
     (text.match(/\b[\w./\\-]+\.\w{1,5}\b/g) || []).forEach(p => {
-      if (p.includes('/') || p.includes('\\')) { candidatesThisTurn.add(p); termSet.add(p.toLowerCase()); }
+      if (p.includes('/') || p.includes('\\')) addCandidate(p, termSet);
     });
   };
 
@@ -848,8 +880,10 @@ function extractFocusTopic(userMessage, assistantResponse, doc) {
     }
   }
 
-  // Title-case the result
-  if (bestPhrase) {
+  // Require minimum score to avoid noise from casual chat
+  // A bigram appearing once scores 2, a repeated unigram scores 2.
+  // Require at least 3 to indicate a real topic, not just filler.
+  if (bestPhrase && bestScore >= 3) {
     return bestPhrase.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   }
   return null;

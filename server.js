@@ -293,6 +293,9 @@ app.post('/api/chat', validate(chatSchema), asyncHandler(async (req, res) => {
             webSearchBlock = formatSearchResults(results);
             if (CONFIG.isDevelopment) {
               console.log(`🔍 Web search: ${results.sources?.length || 0} sources, ${results.context?.length || 0} chars context`);
+              if (webSearchBlock) {
+                console.log(`🔍 Search block (first 300 chars): ${webSearchBlock.substring(0, 300)}`);
+              }
             }
           } catch (err) {
             console.warn('Web search error:', err.message);

@@ -71,12 +71,12 @@ The store is split into domain-specific slices composed into a single flat store
 - Controlled by `settings.general.autoSummarize` (default true)
 - Debate extraction — `services/debateExtractor.js`, triggers every 10 turns in both modes. Mode-aware prompts (roleplay: character debates; utility: approach disagreements). Extracts topic, participants, positions, state via Ollama. Non-blocking via `setImmediate()`
 
-**Cross-session tier** (opt-in):
+**Cross-session tier** (enabled by default):
 - Global memory table — facts promoted from sessions, deduplicated by entity_key
 - Character relationships — trust level, interaction count, key moments
 - FTS5 full-text search over global memory
 - World snapshots — `world_snapshots` table, created on session archive (both modes), seeds new sessions with same character/template
-- Controlled by `settings.general.crossSessionMemory` (default false)
+- Controlled by `settings.general.crossSessionMemory` (default true, can be disabled)
 
 **Context window** (`services/contextWindow.js`) — token-budgeted selection, 9 priority levels:
 1. System prompt (always)
@@ -226,12 +226,12 @@ Users can save current settings as a named "world" template. Stored as JSON in `
 10. **Story notes race condition** — handled by flushing pending debounced saves on session switch and capturing `sessionId` at typing time
 11. **`contextBudget`** must be in `settingsSchema` (see gotcha 3) — added to `general` object
 12. **FTS5 backfill** — existing messages are auto-indexed on first startup after migration. The backfill runs once and is safe to re-run.
-13. **Cross-session memory is opt-in** — `settings.general.crossSessionMemory` defaults to `false`. When disabled, no global memory promotion or retrieval occurs.
+13. **Cross-session memory is on by default** — `settings.general.crossSessionMemory` defaults to `true`. Can be disabled in settings. When disabled, no global memory promotion or retrieval occurs.
 14. **postChatProcessor is fire-and-forget** — called without `await` in the chat endpoint. Summarization and debate extraction run in `setImmediate()`. Errors are caught and logged, never block the SSE response.
 15. **Event backward compat** — `ongoingEvents` can contain strings (legacy) or objects (new). Always check `typeof` before accessing `.text` or `.state`. The extractor auto-migrates strings to objects.
 16. **`_resolvedEvents` is transient** — set by `extractWorldState()` for `postChatProcessor` to log, then deleted before saving to DB. Never persisted.
 17. **Debate extraction is inference-based** — unlike other state extraction (zero-inference), `debateExtractor.js` calls Ollama. Runs in `setImmediate()` every 10 turns, both modes. Mode-aware prompt selected via `mode` parameter.
-18. **World snapshots require crossSessionMemory** — snapshots are only created on archive and only seeded on create when `settings.general.crossSessionMemory` is enabled. Works for both modes.
+18. **World snapshots** — created on archive and seeded on create by default. Only skipped if `crossSessionMemory` is explicitly set to `false`. Works for both modes.
 19. **Session state extraction (utility mode)** — `extractSessionState()` tracks focus, questions, decisions, parked items, entities. Same data flow as roleplay: stored in `world_state` JSON, diffed by `diffWorldState()`, injected as `[Session State]` in context block.
 20. **`diffWorldState()` is config-driven** — uses `DIFF_FIELDS` config object instead of hardcoded field arrays. Supports both roleplay fields (location, characters) and utility fields (focus, questions, decisions). Adding new fields only requires updating the config.
 

@@ -266,7 +266,7 @@ app.post('/api/chat', validate(chatSchema), asyncHandler(async (req, res) => {
 
         // Load cross-session global memory if enabled
         let globalContext = null;
-        const crossSessionEnabled = settings?.general?.crossSessionMemory === true;
+        const crossSessionEnabled = settings?.general?.crossSessionMemory !== false;
         if (crossSessionEnabled) {
           const characterName = settings?.roleplay?.character?.name;
           const userName = settings?.userPersona?.name;

@@ -31,7 +31,7 @@ Everything is saved as a **world** you can switch between instantly. Jump from a
 - **Dynamic state tracking** — In roleplay: auto-tracked location, time, characters, events, mood, breadcrumbs, and debates. In utility: auto-tracked focus topic, open questions, decisions, parked items, and referenced entities. Same engine, different lenses — both editable in the state panel
 - **Pinnable messages** — Pin key moments in any conversation to keep them in the AI's context permanently
 - **Archive recall** — Say "remember when..." and the system searches message history to inject relevant context
-- **Cross-session memory** — Opt-in persistent memory across sessions. Facts, relationships, and summaries carry between conversations with the same character
+- **Cross-session memory** — Persistent memory across sessions. Facts, relationships, and summaries carry between conversations with the same character
 - **Worlds** — 22 built-in presets (roleplay + utility); save your own worlds and switch between them from the header
 - **Model management** — Browse, download, and switch Ollama models; HuggingFace GGUF support
 - **User persona** — Define yourself once and carry your identity across all worlds
@@ -94,7 +94,7 @@ Open **http://localhost:5173** and pick a template to get started.
 
 6. **Session state tracking** — Both modes get automatic state tracking that updates live after every message. In roleplay, the World State panel tracks location (with breadcrumbs), time, characters (persistent when they leave), events (active/fading lifecycle), mood, and debates. In utility mode, the Session State panel tracks your focus topic, open questions, decisions made, parked items, and referenced entities (tools, APIs, files). Same engine — debate tracking works in both modes to catch unresolved disagreements. The panel is collapsible, editable, and all changes are logged to history.
 
-7. **Cross-session memory** — Enable in Settings > General > Memory. Your character will remember facts, conversations, and your relationship across multiple sessions — turning isolated chats into a continuous companion experience. Archiving a roleplay session snapshots the world state; starting a new session with the same character seeds the world from that snapshot.
+7. **Cross-session memory** — Your character remembers facts, conversations, and your relationship across multiple sessions — turning isolated chats into a continuous companion experience. Archiving a session snapshots the world state; starting a new session with the same character seeds the world from that snapshot. Can be disabled in Settings > General if needed.
 
 ---
 

@@ -65,6 +65,7 @@ const BLANK_SETTINGS = {
     bio: '',
     skills: '',
     profession: '',
+    timezone: 'America/Los_Angeles',
     tastes: { interests: '', hobbies: '', mediaPreferences: '' },
     linguisticFilters: { bannedPhrases: [], bannedWords: [] },
     boundaries: ''
@@ -79,7 +80,7 @@ const BLANK_SETTINGS = {
     maxTokens: 2048,
     contextBudget: 4096,
     autoSummarize: true,
-    crossSessionMemory: false
+    crossSessionMemory: true
   },
   meta: {
     templateId: null,

@@ -14,9 +14,9 @@ router.post('/', validate(sessionCreateSchema), asyncHandler(async (req, res) =>
   const { name, character_name, character_mode, mode, settings_snapshot } = req.body;
   const sessionId = uuidv4();
 
-  // Seed world state from snapshot if crossSessionMemory enabled (both modes)
+  // Seed world state from snapshot (both modes, enabled by default)
   let initialWorldState = '{}';
-  if (settings_snapshot?.general?.crossSessionMemory) {
+  if (settings_snapshot?.general?.crossSessionMemory !== false) {
     try {
       const templateId = settings_snapshot?.meta?.templateId || 'default';
       const snapshot = await getWorldSnapshot(templateId, character_name || null);

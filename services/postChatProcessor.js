@@ -197,7 +197,7 @@ export async function processPostChat({ sessionId, userContent, assistantRespons
   }
 
   // 6. Cross-session memory promotion (background, non-blocking)
-  const crossSessionEnabled = settings?.general?.crossSessionMemory === true;
+  const crossSessionEnabled = settings?.general?.crossSessionMemory !== false;
   if (crossSessionEnabled) {
     setImmediate(async () => {
       try {

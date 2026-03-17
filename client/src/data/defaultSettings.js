@@ -55,7 +55,7 @@ export const DEFAULT_SETTINGS = {
     maxTokens: 2048,
     contextBudget: 4096,
     autoSummarize: true,
-    crossSessionMemory: false
+    crossSessionMemory: true
   },
 
   meta: {

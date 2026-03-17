@@ -289,9 +289,6 @@ app.post('/api/chat', validate(chatSchema), asyncHandler(async (req, res) => {
         let webSearchBlock = '';
         if (settings?.general?.webSearch && settings?.general?.braveApiKey && shouldSearch(userContent)) {
           try {
-            if (CONFIG.isDevelopment) {
-              console.log(`🔍 Web search: "${userContent.substring(0, 80)}"`);
-            }
             const results = await searchWeb(userContent, settings.general.braveApiKey);
             webSearchBlock = formatSearchResults(results);
             if (CONFIG.isDevelopment) {

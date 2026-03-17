@@ -39,6 +39,7 @@ export async function searchWeb(query, apiKey, { maxTokens = 4096, maxUrls = 3, 
   if (!query || !apiKey) return { context: '', sources: [] };
 
   query = cleanSearchQuery(query);
+  console.log(`🔍 Web search query: "${query}"`);
 
   try {
     const url = new URL(BRAVE_LLM_CONTEXT_URL);
@@ -59,7 +60,8 @@ export async function searchWeb(query, apiKey, { maxTokens = 4096, maxUrls = 3, 
     });
 
     if (!response.ok) {
-      console.warn(`Brave LLM Context API error: ${response.status} ${response.statusText}`);
+      const errorBody = await response.text().catch(() => '');
+      console.warn(`Brave LLM Context API error: ${response.status} ${response.statusText}${errorBody ? ' — ' + errorBody.substring(0, 200) : ''}`);
       return { context: '', sources: [] };
     }
 

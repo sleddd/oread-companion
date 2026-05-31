@@ -3,6 +3,7 @@ import TextField from '../ui/TextField';
 import TextArea from '../ui/TextArea';
 import ImageUpload from '../ui/ImageUpload';
 import MultiSelect from '../ui/MultiSelect';
+import CollapsibleSection from './CollapsibleSection';
 import { characterFileToSettings } from '../../utils/characterConverter';
 
 // Personality trait options
@@ -142,6 +143,7 @@ export default function CharacterEditor({ inlineCharacter, onCharacterChange, mo
           </div>
         </div>
 
+        <div className="character-card__body">
         {/* Role / Profession */}
         <div className="character-editor__section">
           <label className="character-editor__label">Role / Profession</label>
@@ -209,21 +211,25 @@ export default function CharacterEditor({ inlineCharacter, onCharacterChange, mo
 
         {/* Personality Traits */}
         <div className="character-editor__section">
-          <h3 className="character-editor__section-title">Personality Traits</h3>
-          <p className="character-editor__hint">Select traits that define this character</p>
-
-          {Object.entries(TRAIT_OPTIONS).map(([category, options]) => (
-            <div key={category} className="character-editor__trait-group">
-              <label className="character-editor__label">
-                {category.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-              </label>
-              <MultiSelect
-                options={options}
-                selected={character.traits?.[category] || []}
-                onChange={(values) => handleTraitChange(category, values)}
-              />
-            </div>
-          ))}
+          <CollapsibleSection
+            title="Personality Traits"
+            description="Select traits that define this character"
+            defaultExpanded={false}
+          >
+            {Object.entries(TRAIT_OPTIONS).map(([category, options]) => (
+              <div key={category} className="character-editor__trait-group">
+                <label className="character-editor__label">
+                  {category.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                </label>
+                <MultiSelect
+                  options={options}
+                  selected={character.traits?.[category] || []}
+                  onChange={(values) => handleTraitChange(category, values)}
+                />
+              </div>
+            ))}
+          </CollapsibleSection>
+        </div>
         </div>
       </div>
     </div>

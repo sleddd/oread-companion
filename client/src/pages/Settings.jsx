@@ -13,7 +13,6 @@ import UserPersonaPanel from '../components/settings/UserPersonaPanel';
 import GeneralSettingsPanel from '../components/settings/GeneralSettingsPanel';
 import Button from '../components/ui/Button';
 import Dropdown from '../components/ui/Dropdown';
-import { exportSettings, importSettings, copySettingsToClipboard } from '../utils/settingsImportExport';
 import { DEFAULT_SETTINGS } from '../data/defaultSettings';
 export default function Settings() {
   // Get state and actions from Zustand store
@@ -32,7 +31,7 @@ export default function Settings() {
   const fetchTemplates = useStore((state) => state.fetchTemplates);
   const saveAsTemplate = useStore((state) => state.saveAsTemplate);
   const applyTemplate = useStore((state) => state.applyTemplate);
-  const [activeTab, setActiveTab] = useState('mode');
+  const [activeTab, setActiveTab] = useState('roleplay');
   const [showSaveWorldForm, setShowSaveWorldForm] = useState(false);
   const [worldName, setWorldName] = useState('');
   const [worldDescription, setWorldDescription] = useState('');
@@ -42,7 +41,7 @@ export default function Settings() {
   useEffect(() => {
     if (templates.length === 0) fetchTemplates();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // tabs: 'mode' (world), 'roleplay', 'persona', 'general', 'integrations'
+  }, []); // tabs: 'roleplay' (world + roleplay), 'persona', 'general', 'integrations'
 
   // Format last saved time
   const getLastSavedText = () => {
@@ -77,43 +76,6 @@ export default function Settings() {
     });
   };
 
-  // Handle export
-  const handleExport = () => {
-    const result = exportSettings(settings, 'ollama-chat-settings.json');
-    if (result.success) {
-      alert('Settings exported successfully!');
-    } else {
-      alert(`Export failed: ${result.error}`);
-    }
-  };
-
-  // Handle import
-  const handleImport = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const result = await importSettings(file);
-    if (result.success) {
-      setSettings(result.settings);
-      alert('Settings imported successfully!');
-    } else {
-      alert(`Import failed: ${result.error}`);
-    }
-
-    // Reset file input
-    event.target.value = '';
-  };
-
-  // Handle copy to clipboard
-  const handleCopyToClipboard = async () => {
-    const result = await copySettingsToClipboard(settings);
-    if (result.success) {
-      alert('Settings copied to clipboard!');
-    } else {
-      alert(`Copy failed: ${result.error}`);
-    }
-  };
-
   // Handle reset to defaults
   const handleReset = () => {
     if (confirm('Are you sure you want to reset all settings to defaults? This cannot be undone.')) {
@@ -139,16 +101,10 @@ export default function Settings() {
       {/* Navigation Tabs */}
       <div className="settings__tabs">
         <button
-          className={`settings__tab ${activeTab === 'mode' ? 'settings__tab--active' : ''}`}
-          onClick={() => setActiveTab('mode')}
-        >
-          World
-        </button>
-        <button
           className={`settings__tab ${activeTab === 'roleplay' ? 'settings__tab--active' : ''}`}
           onClick={() => setActiveTab('roleplay')}
         >
-          Roleplay Mode
+          Roleplay Settings
         </button>
         <button
           className={`settings__tab ${activeTab === 'persona' ? 'settings__tab--active' : ''}`}
@@ -161,12 +117,6 @@ export default function Settings() {
           onClick={() => setActiveTab('general')}
         >
           Model
-        </button>
-        <button
-          className={`settings__tab ${activeTab === 'integrations' ? 'settings__tab--active' : ''}`}
-          onClick={() => setActiveTab('integrations')}
-        >
-          Integrations
         </button>
       </div>
 
@@ -227,8 +177,8 @@ export default function Settings() {
 
       {/* Tab Content */}
       <div className="settings__content">
-        {/* World Templates Tab */}
-        {activeTab === 'mode' && (
+        {/* Roleplay Settings Tab (world templates + world/narrative/character config) */}
+        {activeTab === 'roleplay' && (
           <div className="settings__tab-content">
             <CollapsibleSection
               title="Choose Your World"
@@ -240,12 +190,7 @@ export default function Settings() {
                 onSelect={handleTemplateSelect}
               />
             </CollapsibleSection>
-          </div>
-        )}
 
-        {/* Roleplay Settings Tab */}
-        {activeTab === 'roleplay' && (
-          <div className="settings__tab-content">
             <CollapsibleSection
               title="World Settings"
               description="Configure the world and setting for roleplay"
@@ -333,6 +278,16 @@ export default function Settings() {
                 </div>
               )}
             </CollapsibleSection>
+
+            <CollapsibleSection
+              title="Reset to Defaults"
+              description="Reset all settings to their default values. This action cannot be undone."
+              defaultExpanded={false}
+            >
+              <Button onClick={handleReset} variant="secondary">
+                Reset to Defaults
+              </Button>
+            </CollapsibleSection>
           </div>
         )}
 
@@ -393,65 +348,6 @@ export default function Settings() {
               <div className="settings__info">
                 <p><strong>Ollama Library:</strong> llama2, mistral, codellama, etc.</p>
                 <p><strong>HuggingFace:</strong> hf.co/bartowski/Llama-3.2-1B-Instruct-GGUF</p>
-              </div>
-            </CollapsibleSection>
-          </div>
-        )}
-
-        {/* Integrations Tab */}
-        {activeTab === 'integrations' && (
-          <div className="settings__tab-content">
-            <CollapsibleSection
-              title="Import & Export"
-              description="Backup, restore, and manage your settings"
-              defaultExpanded={true}
-            >
-              <div className="settings__integration-actions">
-                <div className="settings__integration-group">
-                  <h4 className="settings__integration-title">Export Settings</h4>
-                  <p className="settings__integration-hint">
-                    Download your current settings as a JSON file for backup or sharing.
-                  </p>
-                  <Button onClick={handleExport} variant="secondary">
-                    Export Settings
-                  </Button>
-                </div>
-
-                <div className="settings__integration-group">
-                  <h4 className="settings__integration-title">Import Settings</h4>
-                  <p className="settings__integration-hint">
-                    Load settings from a previously exported JSON file.
-                  </p>
-                  <label className="btn btn--secondary">
-                    Import Settings
-                    <input
-                      type="file"
-                      accept=".json"
-                      onChange={handleImport}
-                      style={{ display: 'none' }}
-                    />
-                  </label>
-                </div>
-
-                <div className="settings__integration-group">
-                  <h4 className="settings__integration-title">Copy to Clipboard</h4>
-                  <p className="settings__integration-hint">
-                    Copy your settings as JSON text to paste elsewhere.
-                  </p>
-                  <Button onClick={handleCopyToClipboard} variant="secondary">
-                    Copy to Clipboard
-                  </Button>
-                </div>
-
-                <div className="settings__integration-group">
-                  <h4 className="settings__integration-title">Reset to Defaults</h4>
-                  <p className="settings__integration-hint">
-                    Reset all settings to their default values. This action cannot be undone.
-                  </p>
-                  <Button onClick={handleReset} variant="secondary">
-                    Reset to Defaults
-                  </Button>
-                </div>
               </div>
             </CollapsibleSection>
           </div>

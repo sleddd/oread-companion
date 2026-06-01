@@ -84,9 +84,9 @@ export default function ChatDrawer({ isOpen, onClose }) {
   });
 
   const getDefaultChatName = () => {
-    const mode = settings.mode;
+    const mode = settings?.mode;
     const characterName = mode === 'roleplay'
-      ? settings.roleplay?.character?.name || settings.roleplay?.singleCharacter?.identity?.name
+      ? settings?.roleplay?.character?.name || settings?.roleplay?.singleCharacter?.identity?.name
       : null;
     return characterName ? `Chat with ${characterName}` : 'New Chat';
   };

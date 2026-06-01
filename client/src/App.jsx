@@ -11,6 +11,8 @@ function App() {
   const currentPage = useStore((state) => state.currentPage);
   const setCurrentPage = useStore((state) => state.setCurrentPage);
   const ollamaStatus = useStore((state) => state.ollamaStatus);
+  // null until loadSettings() resolves; defaults are fetched from oread-cli.
+  const settings = useStore((state) => state.settings);
 
   // Initialize on mount (only once)
   useEffect(() => {
@@ -29,8 +31,14 @@ function App() {
       <div className="app__container">
         <main className="main-content">
           <ErrorBoundary>
-            {currentPage === 'chat' && <ChatPage />}
-            {currentPage === 'settings' && <Settings />}
+            {!settings ? (
+              <div className="app__loading">Loading…</div>
+            ) : (
+              <>
+                {currentPage === 'chat' && <ChatPage />}
+                {currentPage === 'settings' && <Settings />}
+              </>
+            )}
           </ErrorBoundary>
         </main>
       </div>

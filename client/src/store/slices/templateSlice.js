@@ -1,5 +1,4 @@
-import { loadTemplates } from '../../data/templates';
-import { saveUserTemplate as saveUserTemplateAPI, deleteUserTemplate as deleteUserTemplateAPI, getTemplate as getTemplateAPI } from '../../utils/templateAPI';
+import { loadTemplates, saveUserTemplate as saveUserTemplateAPI, deleteUserTemplate as deleteUserTemplateAPI, getTemplate as getTemplateAPI } from '../../utils/templateAPI';
 import { mergeWithDefaults } from './settingsSlice';
 
 export const createTemplateSlice = (set, get) => ({

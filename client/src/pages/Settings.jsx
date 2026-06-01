@@ -13,7 +13,6 @@ import UserPersonaPanel from '../components/settings/UserPersonaPanel';
 import GeneralSettingsPanel from '../components/settings/GeneralSettingsPanel';
 import Button from '../components/ui/Button';
 import Dropdown from '../components/ui/Dropdown';
-import { DEFAULT_SETTINGS } from '../data/defaultSettings';
 export default function Settings() {
   // Get state and actions from Zustand store
   const settings = useStore((state) => state.settings);
@@ -31,6 +30,7 @@ export default function Settings() {
   const fetchTemplates = useStore((state) => state.fetchTemplates);
   const saveAsTemplate = useStore((state) => state.saveAsTemplate);
   const applyTemplate = useStore((state) => state.applyTemplate);
+  const resetSettings = useStore((state) => state.resetSettings);
   const [activeTab, setActiveTab] = useState('roleplay');
   const [showSaveWorldForm, setShowSaveWorldForm] = useState(false);
   const [worldName, setWorldName] = useState('');
@@ -76,11 +76,12 @@ export default function Settings() {
     });
   };
 
-  // Handle reset to defaults
-  const handleReset = () => {
+  // Handle reset to defaults — clears active settings server-side and re-pulls
+  // oread-cli's canonical defaults (no client-side default copy).
+  const handleReset = async () => {
     if (confirm('Are you sure you want to reset all settings to defaults? This cannot be undone.')) {
-      setSettings(JSON.parse(JSON.stringify(DEFAULT_SETTINGS)));
-      alert('Settings reset to defaults');
+      const result = await resetSettings();
+      alert(result.success ? 'Settings reset to defaults' : `Reset failed: ${result.error}`);
     }
   };
 

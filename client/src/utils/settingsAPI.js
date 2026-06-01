@@ -4,6 +4,17 @@
 import { apiFetch } from './apiClient';
 
 const API_BASE = '/api/templates/active';
+const DEFAULTS_BASE = '/api/templates/defaults';
+
+// Canonical default settings, owned by oread-cli (single source of truth).
+// The GUI no longer keeps its own DEFAULT_SETTINGS copy.
+export async function fetchDefaultSettings() {
+  const response = await apiFetch(DEFAULTS_BASE);
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  const data = await response.json();
+  if (!data.success || !data.settings) throw new Error(data.error || 'No default settings returned');
+  return data.settings;
+}
 
 export async function loadSettingsFromAPI() {
   try {

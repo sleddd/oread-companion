@@ -15,7 +15,7 @@ export default function WorldDrawer({ isOpen, onClose }) {
   const fetchTemplates = useStore((s) => s.fetchTemplates);
   const deleteTemplate = useStore((s) => s.deleteTemplate);
 
-  const activeTemplateId = settings.meta?.templateId || null;
+  const activeTemplateId = settings?.meta?.templateId || null;
 
   // Measure header height and load templates when drawer opens
   useEffect(() => {

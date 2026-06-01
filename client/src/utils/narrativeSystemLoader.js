@@ -1,11 +1,11 @@
-// Narrative System Loader
-// Loads narrative style definitions from JSON and builds prompt guidance
+// Narrative System Loader — UI only
+// Provides narrator-voice options for the Settings dropdown. The actual
+// narrative style definitions (frame/format/constraint) and all prompt
+// building live in oread-cli (src/core/narrativeSystemLoader.js +
+// promptBuilder.js). This GUI never builds prompts.
 
-import narrativeData from '../data/narrative-system/styles.json';
-
-const { styles } = narrativeData;
-
-// Labels for the dropdown UI
+// Human-facing labels for the narrator-voice dropdown. Keys must match the
+// style keys oread-cli understands (see oread-cli narrative-system/styles.json).
 const styleLabels = {
   companion: 'Companion/Chat',
   omniscient: 'Omniscient Narrator',
@@ -17,27 +17,15 @@ const styleLabels = {
 };
 
 /**
- * Get all available narrative style options for the dropdown
- * @returns {Array} - Array of { value, label } for Dropdown component
+ * Get all available narrator-voice options for the dropdown.
+ * @returns {Array} - Array of { value, label } for the Dropdown component
  */
 export function getNarrativeOptions() {
   const options = [{ value: '', label: 'None' }];
 
-  for (const key of Object.keys(styles)) {
-    options.push({ value: key, label: styleLabels[key] || key });
+  for (const [key, label] of Object.entries(styleLabels)) {
+    options.push({ value: key, label });
   }
 
   return options;
-}
-
-/**
- * Get a narrative style definition by key
- * @param {String} styleKey - The narrative style key
- * @returns {Object|null} - { frame, format, constraint, label } or null
- */
-export function getNarrativeStyle(styleKey) {
-  if (!styleKey) return null;
-  const style = styles[styleKey];
-  if (!style) return null;
-  return { ...style, label: styleLabels[styleKey] || styleKey };
 }

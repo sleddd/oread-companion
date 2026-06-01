@@ -1,31 +1,43 @@
-import { DEFAULT_SETTINGS } from '../../data/defaultSettings';
-import { saveSettings as saveSettingsAPI, loadSettings as loadSettingsAPI } from '../../utils/settingsAPI';
+import {
+  fetchDefaultSettings,
+  saveSettings as saveSettingsAPI,
+  loadSettings as loadSettingsAPI,
+  deleteSettings as deleteSettingsAPI
+} from '../../utils/settingsAPI';
 
 let saveTimeoutRef = null;
 
-// The oread-cli backend may return active settings that omit some sections
-// (e.g. `meta`, or fields the GUI expects). Deep-merge incoming settings onto
-// DEFAULT_SETTINGS so the UI always has the full shape (meta.templateId, etc.).
+// Canonical defaults live in oread-cli (GET /api/templates/defaults). We fetch
+// them once at startup and cache them here as the merge base — the GUI no longer
+// ships its own DEFAULT_SETTINGS copy.
+let defaultsCache = null;
+
 function isPlainObject(v) {
   return v && typeof v === 'object' && !Array.isArray(v);
 }
 
+// Deep-merge incoming settings onto the backend defaults so every settings panel
+// always sees the full shape (meta.templateId, generation params, etc.), even when
+// a world or the active settings omit some sections. Falls back to an empty base
+// if defaults haven't loaded yet (loadSettings primes the cache before anything
+// that needs it runs).
 export function mergeWithDefaults(loaded) {
-  const defaults = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
-  const merge = (base, override) => {
-    if (!isPlainObject(override)) return base;
-    const out = { ...base };
+  const base = defaultsCache ? JSON.parse(JSON.stringify(defaultsCache)) : {};
+  const merge = (b, override) => {
+    if (!isPlainObject(override)) return b;
+    const out = { ...b };
     for (const key of Object.keys(override)) {
       const o = override[key];
-      out[key] = isPlainObject(o) && isPlainObject(base[key]) ? merge(base[key], o) : o;
+      out[key] = isPlainObject(o) && isPlainObject(b[key]) ? merge(b[key], o) : o;
     }
     return out;
   };
-  return merge(defaults, loaded || {});
+  return merge(base, loaded || {});
 }
 
 export const createSettingsSlice = (set, get) => ({
-  settings: DEFAULT_SETTINGS,
+  // null until loadSettings() resolves; App.jsx gates rendering on this.
+  settings: null,
   isSavingSettings: false,
   lastSaved: null,
 
@@ -70,21 +82,47 @@ export const createSettingsSlice = (set, get) => ({
 
   loadSettings: async () => {
     try {
-      const localSettings = localStorage.getItem('ollama-chat-settings');
-      if (localSettings) {
-        const parsed = JSON.parse(localSettings);
-        set({ settings: parsed });
+      // 1. Prime the canonical defaults from oread-cli (single source of truth).
+      if (!defaultsCache) {
+        try {
+          defaultsCache = await fetchDefaultSettings();
+        } catch (e) {
+          console.error('Failed to fetch default settings from backend:', e);
+        }
       }
 
+      // 2. localStorage for instant UI (merged onto defaults for a complete shape).
+      const localSettings = localStorage.getItem('ollama-chat-settings');
+      set({ settings: mergeWithDefaults(localSettings ? JSON.parse(localSettings) : null) });
+
+      // 3. Backend active settings are authoritative — overwrite once they load.
       const result = await loadSettingsAPI();
       if (result.success && result.settings) {
-        set({ settings: result.settings });
+        const merged = mergeWithDefaults(result.settings);
+        set({ settings: merged });
         try {
-          localStorage.setItem('ollama-chat-settings', JSON.stringify(result.settings));
+          localStorage.setItem('ollama-chat-settings', JSON.stringify(merged));
         } catch (_) {}
       }
     } catch (error) {
       console.error('Failed to load settings:', error);
+      // Last resort so the app can still render.
+      if (!get().settings) set({ settings: mergeWithDefaults(null) });
+    }
+  },
+
+  // Reset to backend defaults: clear the active settings server-side (DELETE
+  // /api/templates/active makes oread-cli reload its defaults), drop the local
+  // cache, then re-pull from the backend.
+  resetSettings: async () => {
+    try {
+      await deleteSettingsAPI();
+      try { localStorage.removeItem('ollama-chat-settings'); } catch (_) {}
+      await get().loadSettings();
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to reset settings:', error);
+      return { success: false, error: error.message };
     }
   },
 

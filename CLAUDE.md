@@ -78,15 +78,11 @@ client/
                           templateSlice, uiSlice
     utils/
       apiClient.js        apiFetch() — thin fetch wrapper (NO CSRF; backend has none)
-      settingsAPI.js      load/save active settings → /api/templates/active
+      settingsAPI.js      load/save active settings + fetch defaults → /api/templates/{active,defaults}
       characterAPI.js     character library CRUD → /api/characters
-      templateAPI.js      user world CRUD → /api/templates/user
+      templateAPI.js      world list (loadTemplates) + user world CRUD → /api/templates[/user]
       characterConverter.js, imageProcessor.js, settingsImportExport.js, settingsValidation.js,
-      personalitySystemLoader.js, narrativeSystemLoader.js   (used by the editing UI)
-    data/
-      defaultSettings.js  DEFAULT_SETTINGS (roleplay-only shape)
-      templates.js        loads /api/templates
-      personality-system/traits.json, narrative-system/styles.json   (trait/voice option data for editors)
+      narrativeSystemLoader.js   (narrator-voice dropdown labels only — NO prompt building)
     styles/               global.scss + component *.module.scss
 ```
 
@@ -95,7 +91,14 @@ client/
 ### Settings sync (2-place)
 Settings are the backend's "active" world. The client mirrors them to localStorage for instant UI.
 - **Save**: `setSettings()` → localStorage (instant) → 1s debounce → `PUT /api/templates/active` (`{ settings }`)
-- **Load**: localStorage first (instant), then `GET /api/templates/active` (authoritative, overwrites)
+- **Defaults**: there is **no client-side `DEFAULT_SETTINGS`**. oread-cli owns the canonical shape
+  (`settingsManager._defaultSettings()`); the client fetches it once via `GET /api/templates/defaults`
+  (`fetchDefaultSettings()`), caches it in `settingsSlice`, and uses it as the merge base
+  (`mergeWithDefaults`). `settings` starts `null`; `App.jsx` shows a loading state until `loadSettings()`
+  resolves. **Reset** = `resetSettings()` → `DELETE /api/templates/active` (backend reloads defaults) →
+  clear localStorage → `loadSettings()`. If you add a default field, add it in oread-cli, not here.
+- **Load**: fetch defaults → localStorage merged onto defaults (instant), then `GET /api/templates/active`
+  (authoritative, overwrites)
 - The client sends `roleplay.character` (single) / `roleplay.characters` (multi). The backend derives
   `roleplay._loadedCharacters` itself (`settingsManager._normalizeLoadedCharacters`) — **don't** rely on
   the client to send `_loadedCharacters`, but **do** keep `roleplay.character`/`characters` populated or
@@ -139,10 +142,12 @@ destructure the whole store. `setSettings()` auto-saves (debounced). Cross-slice
 > If you add an endpoint the GUI needs, implement it in `oread-cli/src/api/routes/` (and rebuild oread-cli).
 
 ## Adding a new setting field
-1. `client/src/data/defaultSettings.js` — add to `DEFAULT_SETTINGS` (roleplay-only shape).
+1. **oread-cli** `settingsManager._defaultSettings()` — add the field to the canonical default shape
+   (this is the single source of truth; the GUI fetches it via `GET /api/templates/defaults`). Rebuild
+   oread-cli.
 2. Add UI in the appropriate `components/settings/*` panel.
-3. If it affects the prompt, memory, or extraction, add it on the **oread-cli** side (`promptBuilder.js`
-   / the relevant service) — this GUI does not build prompts.
+3. If it affects the prompt, memory, or extraction, also wire it on the **oread-cli** side
+   (`promptBuilder.js` / the relevant service) — this GUI does not build prompts.
 4. oread-cli's `settingsManager.setAll()` does a JSON round-trip; unknown keys are tolerated but ignored.
 
 ## Gotchas

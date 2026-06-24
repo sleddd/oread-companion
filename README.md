@@ -8,6 +8,8 @@ engine. The CLI is the backend (database, memory, prompt-building, AI providers)
 richer **editing and play surface**. You can use whichever you prefer — the terminal UI or this GUI —
 on top of the same backend and the same saved worlds, characters, and sessions.
 
+Note: The Oread CLI is being revised to have better roleplay and storytelling. It currently is missing the standard "you are" prompt which helps it maintain character. Unfortunately, I am limited on time, so I can only update this occasionally.
+
 ![Oread Companion](screenshots/screenshot-1.png)
 
 ## What is Oread Companion?
